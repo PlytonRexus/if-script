@@ -1,0 +1,189 @@
+@font-face {
+    font-family: 'VarelaRound-Regular';
+    src: url('../assets/fonts/VarelaRound-Regular.ttf');
+}
+
+@font-face {
+    font-family: 'FiraMono-Regular';
+    src: url('../assets/fonts/FiraMono-Regular.ttf');
+}
+
+html {
+    padding: 0;
+    margin: 0;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+    background-attachment: fixed;
+}
+
+.parallax {
+    /* The image used */
+    /* background-image: url("book-background0.jpg"); */
+    background-color: rgb(42, 128, 139);
+  
+    /* Set a specific height */
+    height: 100vh;
+  
+    /* Create the parallax scrolling effect */
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+#root {
+    display: flex;
+    flex-shrink: 4;
+    height: 100vh;
+    padding: 0;
+    margin: 0;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    right: 0;
+}
+
+.card {
+    background-color: rgba(240, 128, 128, 1);
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+    transition: 0.3s;
+    margin: 0.8%;
+    width: 47.3%;
+    height: 90%;
+    overflow: auto;
+    font-family: monospace;
+    text-align: justify;
+    resize: both;
+}
+
+.container {
+    height: 100%;
+}
+
+/* .container,
+.backdrop,
+textarea {
+    width: 460px;
+    height: 180px;
+}
+
+.highlights,
+textarea {
+    padding: 10px 10px 0 10px;
+    font: 20px/28px 'Open Sans', sans-serif;
+    letter-spacing: 1px;
+}
+
+.container {
+    display: block;
+    margin: 0 auto;
+    transform: translateZ(0);
+    -webkit-text-size-adjust: none;
+}
+
+.backdrop {
+    position: absolute;
+    z-index: 1;
+    border: 2px solid #685972;
+    background-color: #fff;
+    overflow: auto;
+    pointer-events: none;
+    transition: transform 1s;
+}
+
+.highlights {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: transparent;
+}
+
+textarea {
+    display: block;
+    position: absolute;
+    z-index: 2;
+    margin: 0;
+    border: 2px solid #74637f;
+    border-radius: 0;
+    color: #444;
+    background-color: transparent;
+    overflow: auto;
+    resize: none;
+    transition: transform 1s;
+}
+*/
+
+.download-btn {
+    padding: 10px;
+    cursor: pointer;
+}
+
+mark {
+    border-radius: 3px;
+    color: black;
+    background-color: #b1d5e5;
+}
+
+button {
+    display: block;
+    width: 300px;
+    margin: 3px auto 0;
+    padding: 5px;
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    background-color: #74637f;
+    font: 18px 'Opens Sans', sans-serif;
+    letter-spacing: 1px;
+    appearance: none;
+    cursor: pointer;
+}
+
+textarea#input-area {
+    font-family: FiraMono-Regular;
+    height: 90%;
+    width: 96.6%;
+    background: rgb(40, 40, 40);
+    color: white;
+    border: none;
+    margin: 0px;
+    border-radius: 0;
+    resize: none;
+    overflow: auto;
+    padding: 20px 10px 30px 10px;
+    font-size: 16px;
+}
+
+#if_r-output-area {
+    padding: 20px;
+    width: 100%;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: auto;
+    margin: 10px auto;
+}
+
+#alert-area {
+    position: fixed;
+    bottom: 0;
+    width: 100vw;
+    height: 20px;
+    background-color: maroon;
+    font-size: large;
+    text-align: center;
+    color: #fff;
+    padding: 10px;
+}
+
+@media (max-width: 850px) {
+    #root {
+        flex-wrap: wrap;
+    }
+
+    .card {
+        width: 100vw;
+        height: 60vh
+    }
+}

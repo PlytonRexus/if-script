@@ -1,0 +1,19 @@
+.if_r-section {
+    padding: 10px 0 10px 0;
+}
+
+.if_r-section-choices-list {
+    list-style: none;
+}
+
+.if_r-section-choice {
+    text-decoration: underline;
+    color: black;
+}
+
+.if_r-section-choice:hover {
+    text-decoration: none;
+    cursor: pointer;
+    padding: 1px;
+    background: rgba(0, 0, 0, 0.2);
+}
