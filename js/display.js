@@ -31,6 +31,18 @@ function fetchFile(addr, site) {
     .catch(err => console.log("Some fetch error occured."));
 }
 
+function createDivs() {
+    let backdrop = document.createElement('div');
+    let highlights = document.createElement('div');
+
+    backdrop.setAttribute("class", "backdrop");
+    highlights.setAttribute("class", "highlights");
+
+    backdrop.appendChild(highlights);
+
+    return backdrop;
+}
+
 function createCard(html) {
     let div = document.createElement('div');
     div.setAttribute("class", "card");
