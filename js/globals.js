@@ -29,6 +29,8 @@ settings>
 @startAt 2 /* startAt decides the section where your story starts */
 @fullTimer 300 [[3]]
 \${title=this}
+\${new=new}
+\${ten=10}
 <settings
 
 /* Use "ss>" to start a section.
@@ -46,8 +48,8 @@ secset>
 tt>The first section <tt
 
 /* Divide the content of sections in paragraphs like this. */
->>This is the first paragraph of the first section <<
->>This is the second paragraph of the same section <<
+This is the first paragraph of the first section
+This is the second paragraph of the same section
 /* Each paragraph can be formatted through HTML syntax.
 This means that you can use most HTML elements like img and iframe inside them. */
 
@@ -60,8 +62,8 @@ ch> Input Choice: __input \${__one} [[3]] <ch
 ss> /* Section serial 2. */
 tt>The second section <tt
 
->>This is the first paragraph of the second section <<
->>This is the second paragraph of the same section <<
+This is the first paragraph of the second section
+This is the second paragraph of the same section
 ch> Go to previous section [[1]]<ch
 ch> Go to next section [[3]] <ch
 <ss
@@ -69,12 +71,14 @@ ch> Go to next section [[3]] <ch
 ss> /* Section serial 3. */
 tt>The third \${title}<tt
 
->>This is the first paragraph of the third \${one} <<
->>This is the second paragraph of the same section <<
+This is the first paragraph of the third \${one}
+This is the second paragraph of the same section
 ch> Go to previous section [[2]] <ch
-ch> Go to the first section [[1]] <ch
+ch> 10 \${__one} [[1]] <ch
 /* Hello, from a comment! */
 <ss`;
 
 
 let IF = {};
+IF.grammar = {};
+IF.state = {};

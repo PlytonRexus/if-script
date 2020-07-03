@@ -1,7 +1,6 @@
 const root = document.querySelector("#root");
 import { loadStory, loadSection } from "./generate-html.js";
 import { parseText } from "./parser/if-parser.js";
-import { fetchFile } from "./fetch-file.js";
 
 class DOMDisplay {
     constructor(element) {
@@ -18,6 +17,20 @@ class DOMDisplay {
     }
 }
 
+function fetchFile(addr, site) {
+    fetch(addr)    // 1) fetch the url
+    .then(response => {
+        if (!response.ok) {
+        throw new Error('Network response was not ok');
+        }
+        return response.blob();
+    })
+    .then(blob => {
+        IF[site] = window.URL.createObjectURL(blob);
+    })
+    .catch(err => console.log("Some fetch error occured."));
+}
+
 function createCard(html) {
     let div = document.createElement('div');
     div.setAttribute("class", "card");
@@ -31,37 +44,13 @@ function loadComponent(div) {
     display.renderChild();
 }
 
-function createButton() {
-    let button = document.createElement('button');
-    button.innerHTML = "Change display";
-    button.addEventListener('click', (e) => {
-        loadComponent(createCard());
-    });
-    return button;
-}
-
-function createDivs() {
-    let backdrop = document.createElement('div');
-    let highlights = document.createElement('div');
-
-    backdrop.setAttribute("class", "backdrop");
-    highlights.setAttribute("class", "highlights");
-
-    backdrop.appendChild(highlights);
-
-    return backdrop;
-}
-
 function createTextBox() {
     let card = createCard();
     let backdrop = createDivs();
     let textarea = document.createElement("textarea");
     let container = document.createElement("div");
 
-    textarea.setAttribute("id", "input-area");
-
-    textarea.addEventListener("keyup", handleInput);
-    textarea.addEventListener("scroll", handleScroll);
+    textarea.setAttribute("id", "if_r-input-area");
 
     textarea.innerHTML = localStorage.getItem("if_r-story-text") || instructions;
 
@@ -80,7 +69,11 @@ function createTextBox() {
 function createParsedDisplay() {
     let card = createCard();
     let div = document.createElement("div");
+    let statsBar = document.createElement("div");
+
     div.setAttribute("id", "if_r-output-area");
+
+    statsBar.setAttribute("class", "if_r-stats-bar");
     
     let button = document.createElement("button");
     button.setAttribute("id", "submit-btn");
@@ -116,7 +109,7 @@ function createParsedDisplay() {
     d.setAttribute("class", "download-btn");
     d.setAttribute("download", "story-text.txt");
     d.onclick = () => {
-        let text = document.querySelector("#input-area").value;
+        let text = document.querySelector("#if_r-input-area").value;
         let data = new Blob([text], {type: 'text/plain'});
         d.setAttribute('href', window.URL.createObjectURL(data));
     }
@@ -127,14 +120,16 @@ function createParsedDisplay() {
     card.appendChild(b);
     card.appendChild(c);
     card.appendChild(d);
+    card.appendChild(statsBar);
     card.appendChild(div);
     return { card, div };
 }
 
 loadComponent(createTextBox().card);
 loadComponent(createParsedDisplay().card);
+
 setInterval(() => {
-    localStorage.setItem("if_r-story-text", document.querySelector("#input-area").value);
+    localStorage.setItem("if_r-story-text", document.querySelector("#if_r-input-area").value);
     document.title = "Story Saved.";
     setTimeout(() => {
         document.title = "IF";
@@ -142,7 +137,7 @@ setInterval(() => {
 }, 10000);
 
 function runSubmit() {
-    let story = parseText(document.querySelector("#input-area").value);
+    let story = parseText(document.querySelector("#if_r-input-area").value);
     loadStory(story);
     loadSection(null, IF.story.settings.startAt);
 }

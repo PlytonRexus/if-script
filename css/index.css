@@ -17,6 +17,7 @@ body {
     padding: 0;
     margin: 0;
     background-attachment: fixed;
+    overflow: auto;
 }
 
 .parallax {
@@ -139,14 +140,15 @@ button {
     letter-spacing: 1px;
     appearance: none;
     cursor: pointer;
+    margin-bottom: 15px;
 }
 
 textarea#input-area {
     font-family: FiraMono-Regular;
     height: 90%;
     width: 96.6%;
-    background: rgb(40, 40, 40);
-    color: white;
+    background: white;
+    color: rgb(40, 40, 40);
     border: none;
     margin: 0px;
     border-radius: 0;
@@ -175,6 +177,15 @@ textarea#input-area {
     text-align: center;
     color: #fff;
     padding: 10px;
+}
+
+#editor {
+    padding: 10px;
+    width: 80%;
+    margin: 10px 10px 10px 10px;
+    height: 85%;
+    resize: horizontal;
+    font-size: 20px;
 }
 
 @media (max-width: 850px) {

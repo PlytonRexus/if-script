@@ -1,4 +1,4 @@
-let variableRegex = /\$\{[a-zA-Z0-9=]+?\}/g;
+import { Story, variableRegex } from "./parser/if-parser.js";
 
 /**
  * Returns HTML formatted string of a Story instance
@@ -51,29 +51,90 @@ function generateHTMLForSection(section) {
 
     wrapper += `<ul class="if_r-section-choices-list" id="section-${serial}-choices">`;
 
-    let i = 0;
-    choices.forEach(choice => {
-        let { target, owner, mode, variables } = choice;
-        let choiceVars = choice.text.match(variableRegex);
-        let choiceText = choice.text;
-
-        choiceText = replaceVars(choiceText, choiceVars);
-
-        i += 1;
-
-        wrapper += 
-        `<li class="if_r-section-choice-li">
-        <a class="if_r-section-choice" data-if_r-target="${target}" 
-        data-if_r-owner="${owner}" id="if_r-${serial}-choice-${i}" 
-        data-if_r-mode="${mode}" data-if_r-i="${i}"
-        data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
-        </li>`;
-    });
+    wrapper = loadChoices(choices, wrapper, serial);
 
     wrapper += `</ul>`;
     wrapper += `</div>`;
 
     return wrapper;
+}
+
+const loadChoices = function (choices, wrapper, serial) {
+    choices.forEach((choice, i) => {
+        if (isSatisfied(choice.condition)) {
+            let { target, owner, mode, variables } = choice;
+            let choiceVars = choice.text.match(variableRegex);
+            let choiceText = choice.text;
+
+            choiceText = replaceVars(choiceText, choiceVars);
+
+            i += 1;
+
+            wrapper += `<li class="if_r-section-choice-li">
+<a class="if_r-section-choice" data-if_r-target="${target}" 
+data-if_r-owner="${owner}" id="if_r-${serial}-choice-${i}" 
+data-if_r-mode="${mode}" data-if_r-i="${i}"
+data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
+</li>`;
+        }
+    });
+
+    return wrapper;
+}
+
+const isSatisfied = function (condition) {
+    if (!condition) {
+        return true;
+    }
+
+    let { comparisons, glue, type } = condition;
+    // let operators = ["==", ">=", "<=", ">", "<"];
+
+    if (glue) {
+        if (glue.trim() === "&") {
+            comparisons.forEach(comp => {
+                let truth = doesMatch(comp);
+
+                if (!truth) {
+                    return false;
+                }
+            });
+            return true;
+        }
+        else if (glue.trim() === "|") {
+            comparisons.forEach(comp => {
+                let truth = doesMatch(comp);
+
+                if (truth) {
+                    return true;
+                }
+            });
+            return false;
+        }
+    } else {
+        return doesMatch(comparisons[0]);
+    }
+}
+
+const doesMatch = (comp, type) => {
+    let truth = false;
+    if (type && type === "vs") {
+        let real = IF.story.variables[comp.variable];
+        let given = parseInt(comp.against) ? parseInt(comp.against) : comp.against.trim();
+
+        // console.log("eval(`(parseInt(${real}) ? parseInt(${real}) : '${real}') ${comp.operator.trim()} (parseInt(${given}) ? parseInt(${given}) : '${given}') ? true : false`)");
+
+        truth = eval(`(parseInt('${real}') ? parseInt('${real}') : '${real}') ${comp.operator.trim()} (parseInt('${given}') ? parseInt('${given}') : '${given}') ? true : false`);
+    } else {
+        let real = IF.story.variables[comp.variable];
+        let given = parseInt(comp.against) ? parseInt(comp.against) : IF.story.variables[comp.against.trim()];
+
+        // console.log(`(parseInt(${real}) ? parseInt(${real}) : '${real}') ${comp.operator.trim()} (parseInt(${given}) ? parseInt(${given}) : '${given}') ? true : false`);
+
+        truth = eval(`(parseInt('${real}') ? parseInt('${real}') : '${real}') ${comp.operator.trim()} (parseInt('${given}') ? parseInt('${given}') : '${given}') ? true : false`);
+    }
+
+    return truth;
 }
 
 function replaceVars(text, vars) {
@@ -105,11 +166,43 @@ function switchSection(targetSec) {
 
     let section = IF.story.findSection(targetSec);
     let { timer, target } = section.settings.timer;
-    if (IF.story.currentTimeout)
-    clearTimeout(IF.story.currentTimeout);
+    if (IF.state.currentTimeout)
+    clearTimeout(IF.state.currentTimeout);
     if (timer && target) {
-        IF.story.currentTimeout = setTimer(timer, target);
+        IF.state.currentTimeout = setTimer(timer, target);
     }
+
+    changeTurn();
+
+    setState({section: targetSec});
+
+    showStats();
+}
+
+function setState(opts) {
+    Object.keys(opts).forEach(opt => {
+        if (opt !== "section")
+        IF.state[opt] = opts[opt];
+        else 
+        IF.state['section'] = IF.story.findSection(opts['section']);
+    });
+}
+
+function changeTurn() {
+    setState({ turn: IF.state.turn + 1 });
+}
+
+function showStats () {
+    let stats = Object.keys(IF.story.variables);
+    let statsHTML = `<pre> <b>Turn:</b> ${IF.state.turn}   `;
+
+    stats.forEach(stat => {
+        statsHTML += `<b>${stat}:</b> ${IF.story.variables[stat]}   `;
+    });
+
+    statsHTML += `</pre>`;
+
+    document.querySelector(".if_r-stats-bar").innerHTML = statsHTML;
 }
 
 function loadSection(sectionHTML, serial) {
@@ -122,8 +215,42 @@ function loadSection(sectionHTML, serial) {
 
 function changeVariables(vars, to) {
     vars.forEach(variable => {
-        IF.story.variables[variable] = to;
+        IF.story.variables[variable] = parseInt(to) ? parseInt(to) : to;
     });
+}
+
+function doActions(actions) {
+    actions.forEach(act => {
+        let op = act.operator.trim();
+        let subject = act.subject.trim();
+        let { type } = act;
+        if (type && type === "vs") {
+            if (IF.story.variables[subject] || IF.story.variables[subject] === 0) {
+                let modifier = parseInt(act.modifier) ? parseInt(act.modifier) : act.modifier.trim();
+                finishAction(subject, op, modifier);
+            }
+
+        } else {
+            if (IF.story.variables[subject] || IF.story.variables[subject] === 0) {
+                let modifier = parseInt(act.modifier.trim()) ? parseInt(act.modifier.trim()) : IF.story.variables[act.modifier.trim()];
+                finishAction(subject, op, modifier);
+            }
+        }
+    });
+}
+
+function finishAction(subject, op, modifier) {
+    if (op === "+") {
+        IF.story.variables[subject] += modifier;
+    } else if (op === "-") {
+        IF.story.variables[subject] -= modifier;
+    } else if (op === "*") {
+        IF.story.variables[subject] *= modifier;
+    } else if (op === "/") {
+        IF.story.variables[subject] /= modifier;
+    } else if (op === "=") {
+        IF.story.variables[subject] = modifier;
+    }
 }
 
 function setTimer (timer, target) {
@@ -160,30 +287,31 @@ function setListenersOnChoices () {
         choice.onclick = (e) => {
             e.preventDefault();
             let mode = choice.getAttribute("data-if_r-mode");
-            let vars = choice.getAttribute("data-if_r-variables") ? choice.getAttribute("data-if_r-variables").split(", "): [];
+            let vars = choice.getAttribute("data-if_r-variables") ? choice.getAttribute("data-if_r-variables").split(", ") : [];
+            let choiceI = choice.getAttribute("data-if_r-i");
+            let actions = IF.state.section.findChoice(choiceI).actions;
+
             if (mode === 'input') {
-                let choiceI = choice.getAttribute("data-if_r-i");
                 let inputValue = document.querySelector(`#if_r-choice-input-${choiceI}`).value;
                 if (inputValue === "") {
                     showAlert("Empty input not allowed!");
                 } else {
                     choice.onclick = "";
                     changeVariables(vars, inputValue);
+                    if (actions) doActions(actions);
                     switchSection(e.target.getAttribute("data-if_r-target"));
                 }
             } else {
                 choice.onclick = "";
                 changeVariables(vars, choice.innerHTML);
+                if (actions) doActions(actions);
                 switchSection(e.target.getAttribute("data-if_r-target"));
             }
         };
     });
 }
 
-function loadStory(story) {
-    IF.story = story;
-    let { timer, target } = IF.story.settings.fullTimer;
-    
+function addMethods() {
     IF.story.findSection = function (serial) {
         let index = this.sections.findIndex(section => {
             return section.serial === serial ? true : false;
@@ -208,5 +336,32 @@ function loadStory(story) {
 
         return this.passages[index];
     }
-    setTimer(timer, target);
+
+    IF.story.sections = IF.story.sections.map(section => {
+        section.findChoice = function (serial) {
+            let index = this.choices.findIndex(choice => {
+                return choice.choiceI == serial ? true : false;
+            });
+    
+            if (index === -1) {
+                index = 0;
+            }
+    
+            return this.choices[index];
+        }
+
+        return section;
+    });
 }
+
+function loadStory(story) {
+    IF.story = story;
+    let { timer, target } = IF.story.settings.fullTimer;
+
+    addMethods();
+
+    if (timer !== 0) setTimer(timer, target);
+    setState({ section: IF.story.settings.startAt, turn: 0 });
+}
+
+export { loadStory, loadSection, setState };

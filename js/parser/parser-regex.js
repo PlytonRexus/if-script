@@ -84,18 +84,6 @@ class Section {
         this.settings.timer = timer;
     }
 
-    findChoice(serial) {
-        let index = this.choices.findIndex(choice => {
-            return choice.choiceI == serial ? true : false;
-        });
-
-        if (index === -1) {
-            index = 0;
-        }
-
-        return this.choices[index];
-    }
-
     get type() {
         return 'Section';
     }
@@ -114,15 +102,13 @@ class Choice {
     * @param {String} text Human-readable description of the Choice
     * @memberof Choice
     */
-    constructor(owner, target, text, variables, mode, choiceI, condition, actions) {
+    constructor(owner, target, text, variables, mode, choiceI) {
         this.mode = mode;
         this.text = text.trim();
         this.owner = owner;
         this.target = target;
         this.variables = variables;
-        this.choiceI = choiceI;
-        this.condition = condition || null;
-        this.actions = actions;
+        this.choiceI == choiceI;
     }
     get type() {
         return 'Choice';
@@ -211,19 +197,85 @@ function parseText(text) {
     return story;
 }
 
-function parseSection(string, serial) {
-    let parser = new nearley.Parser(nearley.Grammar.fromCompiled(IF.grammar.section));
-    parser.feed(string);
-    let section = parser.results[0];
-    section.serial = serial;
-    section.choices = section.choices.map(choice => {
-        choice.owner = serial;
-        if (choice.mode === "input") {
-            choice.text += `<input type="text" class="if_r-choice-input" id="if_r-choice-input-${choice.choiceI}"/>`;
-        }
-        return choice;
+/**
+ * Parses a section string into a Section Instance.
+ *
+ * @param {string} section String of the section that is to be parsed
+ * @param {number} serial The serial order of the section to be parsed
+ * @returns {Section} Instance of Section
+ */
+function parseSection(section, serial) {
+    section = section.replace(/ss>/gi, "").replace(/<ss/gi, "");
+
+    let secset = section.match(grammar.sectionSettings) || [];
+    secset = secset.length > 0 ? secset[0] : "";
+    let { timer } = parseSecSet(secset, serial);
+
+    let title = section.match(grammar.title) ? section.match(grammar.title)[0] : null || "";
+
+    // if (title === "") 
+    // throw Error(({ "message": "A title for each section is required!", "code": "3" }));
+
+    title = title.replace(/tt>/, "").replace(/<tt/, "");
+
+    section = section.replace(grammar.title, "");
+
+    let text = "";
+
+    (section.match(grammar.para) || [])
+    .forEach(para => {
+        para = para.replace(/>>/, "").replace(/<</, "");
+        para = `<p>${para}</p>`;
+        text += para;
     });
-    return section;
+
+    let i = 0;
+
+    let choices = (section.match(grammar.choice) || [])
+    .map(choice => {
+        i += 1;
+        return parseChoice(choice, serial, i);
+    });
+
+    return new Section(title, text, choices, serial, { timer });
+}
+
+
+function parseChoice(choice, serial, choiceI) {
+    choice = choice.replace(/ch>/, "").replace(/<ch/, "");
+    let target = choice.match(grammar.choiceTarget);
+    target = target ? target[0] : "";
+
+    // if (target = "") 
+    // throw Error({ "message": "Choice target invalid or not present.", "code": "4" });
+
+    target = target.replace(/\[\[/, "").replace(/\]\]/, "");
+    target = parseInt(target, 10);
+
+    choice = choice.replace(grammar.choiceTarget, "");
+
+    choice = choice.replace(grammar.html, "");
+
+    let mode = "basic";
+
+    let isInput = choice.match(grammar.input);
+    if (isInput) {
+        choice = choice.replace(grammar.input, `<input type="text" class="if_r-choice-input" id="if_r-choice-input-${choiceI}"/>`);
+        mode = "input";
+    }
+
+    let variables = 
+    (choice.match(grammar.setVarAsTarget) || [])
+    .map(variable => {
+        return variable.replace(/\$\{/, "").replace(/\}/, "").replace(/\s/g, "").replace("__", "");
+    });
+
+    choice = choice.replace(grammar.setVarAsTarget, "");
+
+    // if (variables.length <= 0)
+    // console.warn("No variable targets set, are you sure?");
+
+    return new Choice(serial, target, choice, variables, mode, choiceI);
 }
 
 /**
@@ -287,10 +339,31 @@ function parseGlobals (string) {
 
         if(var_value === "")
         console.warn("Variable value was read as ''. Are you sure the value should be empty?");
-        varObject[var_name] = parseInt(var_value) ? parseInt(var_value) : var_value;
+        varObject[var_name] = var_value;
     });
 
     return varObject;
+}
+
+function parseSecSet(secset, serial) {
+    let timerString = secset.match(grammar.secTimer);
+
+    timerString = timerString ? timerString[0].replace(/@timer /, "") : "0";
+
+    let timerNumbers = timerString.match(/\d+/g);
+
+    let timer = {};
+    if (timerNumbers.length > 1) {
+        timer.timer = parseInt(timerNumbers[0]) ? parseInt(timerNumbers[0]) : 0;
+        timer.target = parseInt(timerNumbers[1]) ? parseInt(timerNumbers[1]) : serial + 1;
+    } else {
+        timer.timer = 0;
+        timer.target = 1;
+    }
+
+    secset = secset.replace(grammar.secTimer, "");
+
+    return { timer };
 }
 
 export { Story, parseText, variableRegex };
