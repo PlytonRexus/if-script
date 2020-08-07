@@ -310,10 +310,10 @@
             // If needed, throw an error:
             if (nextColumn.states.length === 0) {
                 // No states at all! This is not good.
-                var err = new Error(this.reportError(token));
-                err.offset = this.current;
-                err.token = token;
-                throw err;
+                // var err = new IFError(this.reportError(token), null, true);
+                // err.offset = this.current;
+                // err.token = token;
+                throw new IFError(this.reportError(token));
             }
 
             // maybe save lexer state
@@ -440,7 +440,7 @@
     // nb. deprecated: use save/restore instead!
     Parser.prototype.rewind = function(index) {
         if (!this.options.keepHistory) {
-            throw new Error('set option `keepHistory` to enable rewinding')
+            throw new IFError('set option `keepHistory` to enable rewinding')
         }
         // nb. recall column (table) indicies fall between token indicies.
         //        col 0   --   token 0   --   col 1
@@ -477,7 +477,7 @@
             } else if (symbol.test) {
                 return 'token matching ' + String(symbol.test);
             } else {
-                throw new Error('Unknown symbol type: ' + symbol);
+                throw new IFError('Unknown symbol type: ' + symbol);
             }
         }
     }
@@ -496,7 +496,7 @@
             } else if (symbol.test) {
                 return '<' + String(symbol.test) + '>';
             } else {
-                throw new Error('Unknown symbol type: ' + symbol);
+                throw new IFError('Unknown symbol type: ' + symbol);
             }
         }
     }

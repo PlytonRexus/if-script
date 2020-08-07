@@ -1,6 +1,3 @@
-// import { passage } from './passage.grammar.js';
-// import { section } from './section.grammar.js';
-
 /**
  * @author Mihir Jichkar
  * @description Each story is composed of Sections and Passages
@@ -15,10 +12,11 @@ class Story {
      * @param {object} settings Settings object 
      * @memberof Story
      */
-    constructor(name, { sections, passages }, { referrable, startAt, fullTimer }, { globals, stats }) {
+    constructor(name, { sections, passages, scenes }, { referrable, startAt, fullTimer }, { globals, stats }) {
         this.name = name.trim();
         this.sections = sections;
         this.passages = passages;
+        this.scenes = scenes || [];
         this.settings = {};
         this.settings.referrable = referrable;
         this.settings.startAt = startAt;
@@ -59,6 +57,20 @@ class Story {
 
     get type() {
         return 'Story';
+    }
+}
+
+class Scene {
+    constructor(sections, { first, last, name }) {
+        if (!(sections instanceof Array)) {
+            throw new IFError("Unexpected argument supplied." + sections + "is not an array.");
+        }
+
+        this.sections = sections;
+        this.first = first || sections[0];
+        this.last = last || sections[sections.length - 1];
+
+        this.name = name || "Untitled";
     }
 }
 
@@ -168,10 +180,11 @@ let grammar = {
     variable: /\$\{[a-zA-Z0-9=]+?\}/g,
     input: /__input/,
     secTimer: /@timer [0-9]+ \[\[\d+\]\]/,
-    variableAssignment: /\$\{[a-zA-Z0-9]+?=[a-zA-Z0-9_ ]+?\}/g,
+    variableAssignment: /\$\{[a-zA-Z0-9]+?=[a-zA-Z0-9_ ']+?\}/g,
     varValue: /[a-zA-Z0-9_ ]+/,
     setVarAsTarget: /\$\{__[a-zA-Z0-9_=]+?\}/g,
-    html: /<\s*\w+[^>]*>(.*?)(<\s*\/\s*\w+>)|/g
+    html: /<\s*\w+[^>]*>(.*?)(<\s*\/\s*\w+>)|/g,
+    scene: /scene>[a-zA-Z0-9"'-_:;@\/\s!\*#\$\{\}]+?<scene/gm
 };
 
 let variableRegex = grammar.variable;
@@ -203,6 +216,9 @@ function parseText(text) {
 
     text = text.replace(grammar.section, "");
 
+    let scened = (text.match(grammar.scene) || [])
+    .map((scene, i) => parseScene(scene, i + 1));
+
     let passaged = (text.match(grammar.passage) || [])
     .map(passage => parsePassage(passage));
 
@@ -224,6 +240,18 @@ function parseSection(string, serial) {
         return choice;
     });
     return section;
+}
+
+function parseScene(string, serial) {
+    let parser = new nearley.Parser(nearley.Grammar.fromCompiled(IF.grammar.scene));
+    parser.feed(string);
+    let scene = parser.results[0];
+    scene.serial = serial;
+    return scene;
+
+    // parser.global(string);
+
+    // return feed;
 }
 
 /**

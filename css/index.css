@@ -24,10 +24,10 @@ body {
     /* The image used */
     /* background-image: url("book-background0.jpg"); */
     background-color: rgb(42, 128, 139);
-  
+
     /* Set a specific height */
     height: 100vh;
-  
+
     /* Create the parallax scrolling effect */
     background-attachment: fixed;
     background-position: center;
@@ -45,89 +45,143 @@ body {
     top: 0;
     bottom: 0;
     right: 0;
+    flex-direction: column;
+    /* flex-wrap: wrap; */
 }
 
-.card {
-    background-color: rgba(240, 128, 128, 1);
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);
+#main {
+    display: flex;
+    flex-shrink: 3;
+    height: 90vh;
+    width: 100vw;
+}
+
+/* Topnav */
+.topnav {
+    background-color: white;
+    width: 100%;
+    height: 10%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+    align-content: center;
+    vertical-align: middle;
+}
+
+.topnav a {
+    float: left;
+    color: #f2f2f2;
+    text-align: center;
+    text-decoration: none;
+    font-size: 16px;
+    display: flex;
+    align-content: center;
+    background: #4286f4;
+    height: 20px;
+    padding-top: 12px;
+    padding-bottom: 15px;
+    margin: auto 8px auto 8px;
+    font-family: sans-serif;
+}
+
+.topnav a:hover {
+    background-color: white;
+    color: black;
+}
+
+.topnav a.active {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.main-div {
+    /*background-color: rgb(192, 229, 231);*/
+    background: #555;
+    color: white;
     transition: 0.3s;
-    margin: 0.8%;
-    width: 47.3%;
-    height: 90%;
-    overflow: auto;
+    width: 50%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
     font-family: monospace;
     text-align: justify;
-    resize: both;
+    resize: horizontal;
+    box-sizing: border-box;
 }
 
-.container {
-    height: 100%;
+.main-div a {
+    color: white;
 }
 
-/* .container,
-.backdrop,
-textarea {
-    width: 460px;
-    height: 180px;
+#editor-div {
+    overflow: hidden;
+    left: 0;
 }
 
-.highlights,
-textarea {
-    padding: 10px 10px 0 10px;
-    font: 20px/28px 'Open Sans', sans-serif;
-    letter-spacing: 1px;
+#output-div {
+    right: 0;
 }
 
-.container {
-    display: block;
-    margin: 0 auto;
-    transform: translateZ(0);
-    -webkit-text-size-adjust: none;
-}
-
-.backdrop {
-    position: absolute;
-    z-index: 1;
-    border: 2px solid #685972;
-    background-color: #fff;
-    overflow: auto;
-    pointer-events: none;
-    transition: transform 1s;
-}
-
-.highlights {
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    color: transparent;
-}
-
-textarea {
-    display: block;
-    position: absolute;
-    z-index: 2;
-    margin: 0;
-    border: 2px solid #74637f;
-    border-radius: 0;
-    color: #444;
-    background-color: transparent;
-    overflow: auto;
-    resize: none;
-    transition: transform 1s;
-}
-*/
-
-.download-btn {
-    padding: 10px;
+#settings-btn,
+#submit-btn,
+.download-btn,
+#write-btn,
+#read-btn,
+#balance-btn {
+    padding: 12px 15px;
     cursor: pointer;
 }
 
-mark {
-    border-radius: 3px;
-    color: black;
-    background-color: #b1d5e5;
+#submit-btn {
+    background: #1fa01f;
+    padding: 12px 15px 12px 15px;
 }
 
-button {
+#preview-btn {
+    background: rgb(201, 20, 20);
+}
+
+#settings-btn {
+    background: rgb(15, 15, 15);
+    padding: 12px 15px 12px 15px;
+    font-size: 18px;
+}
+
+.right-align-top {
+    margin-left: auto;
+    margin-right: 8px;
+}
+
+.content-opts {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+#write-btn,
+#read-btn,
+#balance-btn {
+    background-color: #4286f4;
+}
+
+#logo {
+    margin-left: auto;
+    background: white;
+}
+
+#logo-img {
+    transform: translate(0, -12px);
+}
+
+#settings-btn:hover,
+#preview-btn:hover,
+#submit-btn:hover,
+#write-btn:hover,
+#read-btn:hover,
+#balance-btn:hover {
+    background: white;
+}
+
+/* button {
     display: block;
     width: 300px;
     margin: 3px auto 0;
@@ -141,51 +195,124 @@ button {
     appearance: none;
     cursor: pointer;
     margin-bottom: 15px;
+} */
+
+button:hover {
+    color: #74637f;
+    background: #eee;
 }
 
-textarea#input-area {
+.editor {
     font-family: FiraMono-Regular;
-    height: 90%;
-    width: 96.6%;
+    height: 100%;
+    width: 100%;
     background: white;
     color: rgb(40, 40, 40);
-    border: none;
     margin: 0px;
     border-radius: 0;
     resize: none;
     overflow: auto;
-    padding: 20px 10px 30px 10px;
     font-size: 16px;
+    padding: 15px 15px 15px 15px;
+    box-sizing: border-box;
+    outline: none;
 }
 
-#if_r-output-area {
-    padding: 20px;
-    width: 100%;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow: auto;
-    margin: 10px auto;
-}
-
-#alert-area {
+/*#alert-area {
     position: fixed;
     bottom: 0;
     width: 100vw;
     height: 20px;
-    background-color: maroon;
+    background-color: rgb(42, 128, 139);
     font-size: large;
     text-align: center;
     color: #fff;
     padding: 10px;
+}*/
+
+#alerts-area {
+    display: none;
 }
 
-#editor {
+/* Style the tab */
+.tab {
+    overflow-x: auto;
+    overflow-y: hidden;
+    border: 1px solid #ccc;
+    background-color: #f1f1f1;
+    height: 8%;
+}
+
+/* Style the buttons inside the tab */
+.tab button {
+    background-color: inherit;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 10px 12px;
+    transition: 0.3s;
+    font-size: 16px;
+    width: 100px;
+    color: black;
+    height: 100%;
+}
+
+/* Change background color of buttons on hover */
+.tab button:hover {
+    background-color: #ddd;
+}
+
+/* Create an active/current tablink class */
+.tab button.active {
+    background-color: rgb(201, 20, 20);
+    color: white;
+}
+
+/* Style the tab content */
+.tabcontent1, .tabcontent2 {
+    display: none;
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-top: none;
+    min-height: 88%;
+}
+
+.tabcontent1 {
+    padding: 0;
+    height: 92%;
+}
+
+.tabcontent2 {
+    height: 88%;
+}
+
+/* Resizer */
+#resizer {
+    width: 100%;
+    height: 100%;
+    border-right: 3px solid #4286f4;
+    box-sizing: border-box;
+}
+
+/* Output area */
+#if_r-output-area {
+    display: none;
+}
+
+/* General formatting */
+code {
+  padding: 5px;
+  background-color: lightgray;
+  color: black;
+  font-family: monospace;
+}
+
+.highlighted {
+    background: darkgray;
     padding: 10px;
-    width: 80%;
-    margin: 10px 10px 10px 10px;
-    height: 85%;
-    resize: horizontal;
-    font-size: 20px;
+    margin: 10px auto;
+    color: lightblue;
 }
 
 @media (max-width: 850px) {
@@ -193,8 +320,8 @@ textarea#input-area {
         flex-wrap: wrap;
     }
 
-    .card {
+    .main-div {
         width: 100vw;
-        height: 60vh
+        height: 90vh
     }
 }

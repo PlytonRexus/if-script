@@ -16,13 +16,14 @@ class Section {
      * @param {array} choices Array of Choice Objects
      * @memberof Section
      */
-    constructor(title, text, choices, serial, { timer }) {
+    constructor(title, text, choices, serial, { timer, music }) {
         this.title = title.trim();
         this.text = text.trim();
         this.choices = choices;
         this.serial = serial;
         this.settings = {};
         this.settings.timer = timer;
+        this.settings.music = music;
     }
 
     findChoice(serial) {
@@ -55,7 +56,7 @@ class Choice {
     * @param {String} text Human-readable description of the Choice
     * @memberof Choice
     */
-    constructor(owner, target, text, variables, mode, choiceI, condition, actions) {
+    constructor(owner, target, text, variables, mode, choiceI, condition, actions, targetType) {
         this.mode = mode;
         this.text = text.trim();
         this.owner = owner;
@@ -64,6 +65,7 @@ class Choice {
         this.choiceI = choiceI;
         this.condition = condition || null;
         this.actions = actions;
+        this.targetType = targetType || "section";
     }
     get type() {
         return 'Choice';
@@ -74,11 +76,18 @@ var sectionG = {
     ParserRules: [
     {"name": "section$string$1", "symbols": [{"literal":"s"}, {"literal":"s"}, {"literal":">"}], "postprocess": function joiner(d) {return d.join('');}},
     {"name": "section$subexpression$1$subexpression$1$string$1", "symbols": [{"literal":"s"}, {"literal":"e"}, {"literal":"c"}, {"literal":"s"}, {"literal":"e"}, {"literal":"t"}, {"literal":">"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "section$subexpression$1$subexpression$1$string$2", "symbols": [{"literal":"@"}, {"literal":"t"}, {"literal":"i"}, {"literal":"m"}, {"literal":"e"}, {"literal":"r"}, {"literal":" "}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "section$subexpression$1$subexpression$1$string$3", "symbols": [{"literal":"["}, {"literal":"["}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "section$subexpression$1$subexpression$1$string$4", "symbols": [{"literal":"]"}, {"literal":"]"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "section$subexpression$1$subexpression$1$string$5", "symbols": [{"literal":"<"}, {"literal":"s"}, {"literal":"e"}, {"literal":"c"}, {"literal":"s"}, {"literal":"e"}, {"literal":"t"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "section$subexpression$1$subexpression$1", "symbols": ["section$subexpression$1$subexpression$1$string$1", "_", "section$subexpression$1$subexpression$1$string$2", "int", "__", "section$subexpression$1$subexpression$1$string$3", "int", "section$subexpression$1$subexpression$1$string$4", "_", "section$subexpression$1$subexpression$1$string$5"]},
+    {"name": "section$subexpression$1$subexpression$1$ebnf$1$subexpression$1$string$1", "symbols": [{"literal":"@"}, {"literal":"t"}, {"literal":"i"}, {"literal":"m"}, {"literal":"e"}, {"literal":"r"}, {"literal":" "}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "section$subexpression$1$subexpression$1$ebnf$1$subexpression$1$string$2", "symbols": [{"literal":"["}, {"literal":"["}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "section$subexpression$1$subexpression$1$ebnf$1$subexpression$1$string$3", "symbols": [{"literal":"]"}, {"literal":"]"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "section$subexpression$1$subexpression$1$ebnf$1$subexpression$1", "symbols": ["section$subexpression$1$subexpression$1$ebnf$1$subexpression$1$string$1", "int", "__", "section$subexpression$1$subexpression$1$ebnf$1$subexpression$1$string$2", "int", "section$subexpression$1$subexpression$1$ebnf$1$subexpression$1$string$3", "_"]},
+    {"name": "section$subexpression$1$subexpression$1$ebnf$1", "symbols": ["section$subexpression$1$subexpression$1$ebnf$1$subexpression$1"], "postprocess": id},
+    {"name": "section$subexpression$1$subexpression$1$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "section$subexpression$1$subexpression$1$ebnf$2$subexpression$1$string$1", "symbols": [{"literal":"@"}, {"literal":"m"}, {"literal":"u"}, {"literal":"s"}, {"literal":"i"}, {"literal":"c"}, {"literal":" "}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "section$subexpression$1$subexpression$1$ebnf$2$subexpression$1", "symbols": ["section$subexpression$1$subexpression$1$ebnf$2$subexpression$1$string$1", "_", "oneline"]},
+    {"name": "section$subexpression$1$subexpression$1$ebnf$2", "symbols": ["section$subexpression$1$subexpression$1$ebnf$2$subexpression$1"], "postprocess": id},
+    {"name": "section$subexpression$1$subexpression$1$ebnf$2", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "section$subexpression$1$subexpression$1$string$2", "symbols": [{"literal":"<"}, {"literal":"s"}, {"literal":"e"}, {"literal":"c"}, {"literal":"s"}, {"literal":"e"}, {"literal":"t"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "section$subexpression$1$subexpression$1", "symbols": ["section$subexpression$1$subexpression$1$string$1", "_", "section$subexpression$1$subexpression$1$ebnf$1", "section$subexpression$1$subexpression$1$ebnf$2", "section$subexpression$1$subexpression$1$string$2"]},
     {"name": "section$subexpression$1", "symbols": ["section$subexpression$1$subexpression$1"]},
     {"name": "section$subexpression$1", "symbols": []},
     {"name": "section$string$2", "symbols": [{"literal":"t"}, {"literal":"t"}, {"literal":">"}], "postprocess": function joiner(d) {return d.join('');}},
@@ -96,14 +105,22 @@ var sectionG = {
             */
         
             let settings = {};
-            if (d[2][0]) {
+            if (d[2][0] && d[2][0][2] && d[2][0][2][0]) {
                 settings.timer = {};
-                settings.timer.timer = parseInt(d[2][0][3]);
-                settings.timer.target = parseInt(d[2][0][6]);
+                settings.timer.timer = parseInt(d[2][0][2][0][1]);
+                settings.timer.target = parseInt(d[2][0][2][0][4]);
             } else {
                 settings.timer = {};
                 settings.timer.timer = 0;
                 settings.timer.target = 1;
+            }
+        
+            if (d[2][0] && d[2][0][3] && d[2][0][3][0]) {
+                settings.timer = {};
+                settings.music = parseInt(d[2][0][3][0][2]);
+            } else {
+                settings.timer = {};
+                settings.music = null;
             }
         
             let title = d[6];
@@ -218,10 +235,15 @@ var sectionG = {
     {"name": "choice$ebnf$2$subexpression$1$string$1", "symbols": [{"literal":"$"}, {"literal":"{"}, {"literal":"_"}, {"literal":"_"}], "postprocess": function joiner(d) {return d.join('');}},
     {"name": "choice$ebnf$2$subexpression$1", "symbols": ["choice$ebnf$2$subexpression$1$string$1", "LN", {"literal":"}"}, "_"]},
     {"name": "choice$ebnf$2", "symbols": ["choice$ebnf$2", "choice$ebnf$2$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
-    {"name": "choice$string$2", "symbols": [{"literal":"["}, {"literal":"["}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "choice$string$3", "symbols": [{"literal":"]"}, {"literal":"]"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "choice$string$4", "symbols": [{"literal":"<"}, {"literal":"c"}, {"literal":"h"}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "choice", "symbols": ["choice$string$1", "_", "choice$subexpression$1", "_", "oneline", "__", "choice$subexpression$2", "_", "choice$ebnf$1", "_", "choice$ebnf$2", "_", "choice$string$2", "int", "choice$string$3", "_", "choice$string$4", "_"], "postprocess": 
+    {"name": "choice$subexpression$3$string$1", "symbols": [{"literal":"["}, {"literal":"["}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "choice$subexpression$3$ebnf$1$subexpression$1$string$1", "symbols": [{"literal":"s"}, {"literal":"c"}, {"literal":"e"}, {"literal":"n"}, {"literal":"e"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "choice$subexpression$3$ebnf$1$subexpression$1", "symbols": ["choice$subexpression$3$ebnf$1$subexpression$1$string$1", "_", {"literal":":"}, "_"]},
+    {"name": "choice$subexpression$3$ebnf$1", "symbols": ["choice$subexpression$3$ebnf$1$subexpression$1"], "postprocess": id},
+    {"name": "choice$subexpression$3$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
+    {"name": "choice$subexpression$3$string$2", "symbols": [{"literal":"]"}, {"literal":"]"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "choice$subexpression$3", "symbols": ["choice$subexpression$3$string$1", "_", "choice$subexpression$3$ebnf$1", "int", "_", "choice$subexpression$3$string$2"]},
+    {"name": "choice$string$2", "symbols": [{"literal":"<"}, {"literal":"c"}, {"literal":"h"}], "postprocess": function joiner(d) {return d.join('');}},
+    {"name": "choice", "symbols": ["choice$string$1", "_", "choice$subexpression$1", "_", "oneline", "__", "choice$subexpression$2", "_", "choice$ebnf$1", "_", "choice$ebnf$2", "_", "choice$subexpression$3", "_", "choice$string$2", "_"], "postprocess": 
         /**
          * Sample input for playground.
          * ch> chor __input ${__abc} ${__abc} [[8516529]] <ch tweets while thinking about a hammer.
@@ -270,8 +292,19 @@ var sectionG = {
             d[10].forEach(val => {
                 variables.push(val[1]);
             });
-            let target = parseInt(d[13]);
-            return new Choice(1, target, text, variables, mode, 1, condition, actions);
+        
+            let target = 1,
+                targetType = "section";
+            if (!d[12][2]) {
+                // [[num]]
+                target = parseInt(d[12][3]);
+                targetType = "section";
+            } else {
+                // [[scene:num]]
+                target = parseInt(d[12][3]);
+                targetType = "scene";
+            }
+            return new Choice(1, target, text, variables, mode, 1, condition, actions, targetType);
         }
         },
     {"name": "LN$ebnf$1", "symbols": [/[a-zA-Z0-9]/]},
@@ -283,11 +316,11 @@ var sectionG = {
     {"name": "int$ebnf$1", "symbols": [/[0-9]/]},
     {"name": "int$ebnf$1", "symbols": ["int$ebnf$1", /[0-9]/], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
     {"name": "int", "symbols": ["int$ebnf$1"], "postprocess": function(d) {return d[0].join("")}},
-    {"name": "oneline$ebnf$1", "symbols": [/[a-zA-Z0-9#$@%\(\)\{\}|?;:!&\]+*-/\[= |]/]},
-    {"name": "oneline$ebnf$1", "symbols": ["oneline$ebnf$1", /[a-zA-Z0-9#$@%\(\)\{\}|?;:!&\]+*-/\[= |]/], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "oneline$ebnf$1", "symbols": [/[a-zA-Z0-9#$@`'"_.%\(\)\{\}|?;:!&\]+*-/\[= |]/]},
+    {"name": "oneline$ebnf$1", "symbols": ["oneline$ebnf$1", /[a-zA-Z0-9#$@`'"_.%\(\)\{\}|?;:!&\]+*-/\[= |]/], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
     {"name": "oneline", "symbols": ["oneline$ebnf$1"], "postprocess": function(d) {return d[0].join("")}},
-    {"name": "text$ebnf$1", "symbols": [/[a-zA-Z0-9#$@%\(\)\{\}|?;:!&\]+*-/\[=\s|]/]},
-    {"name": "text$ebnf$1", "symbols": ["text$ebnf$1", /[a-zA-Z0-9#$@%\(\)\{\}|?;:!&\]+*-/\[=\s|]/], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "text$ebnf$1", "symbols": [/[a-zA-Z0-9#$@`'"_.%\(\)\{\}|?;:!&\]+*-/\[=\s|]/]},
+    {"name": "text$ebnf$1", "symbols": ["text$ebnf$1", /[a-zA-Z0-9#$@`'"_.%\(\)\{\}|?;:!&\]+*-/\[=\s|]/], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
     {"name": "text", "symbols": ["text$ebnf$1"], "postprocess": function(d) {return d[0].join("")}},
     {"name": "_$ebnf$1", "symbols": []},
     {"name": "_$ebnf$1", "symbols": ["_$ebnf$1", /[\s]/], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
@@ -300,8 +333,8 @@ var sectionG = {
   , ParserStart: "section"
 }
 if (typeof module !== 'undefined'&& typeof module.exports !== 'undefined') {
-   module.exports = sectionG;
+    module.exports = sectionG;
 } else {
-   IF.grammar.section = sectionG;
+    IF.grammar.section = sectionG;
 }
 })();

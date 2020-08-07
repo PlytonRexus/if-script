@@ -10,34 +10,16 @@
 </head>
 
 <body class="parallax">
-	<div id="root">
-		<!-- <pre id="editor"></pre> -->
-	</div>
-	<!-- <iframe src="https://castbox.fm/app/castbox/player/id2787941/id273246575?v=8.22.11&autoplay=1" frameborder="0"
-		width="100%" height="500px" class="castbox-iframe"></iframe> -->
-	<!-- <script>
-		if ('serviceWorker' in navigator) {
-			navigator.serviceWorker
-				.register('service-worker.js')
-				.then(function () {
-					console.log("Service Worker Registered");
-				});
-		}
-	</script> -->
-	<div id="alert-area"></div>
-	<script src="js/globals.js"></script>
-	<script type="module" src="js/display.js"></script>
-	<script src="js/parser/nearley.min.js"></script>
-	<script>console.log(IF)</script>
-	<script src="js/parser/section.grammar.js"></script>
+	<div id="root"></div>
 	
-	<!-- <script src="js/src-min-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
-	<script>
-		var editor = ace.edit("editor");
-		editor.setTheme("ace/theme/iplastic");
-		editor.setValue = instructions;
-	</script> -->
-	<!-- <script src="js/parser/passage.grammar.js"></script> -->
+	<script src="js/globals.js"></script>
+	<script src="js/if_r-terp.js"></script>
+	<script type="text/javascript" src="js/lib/w3-highlighter.js"></script>
+	<script type="module" src="js/display.js"></script>
+	<script src="js/lib/nearley.js"></script>
+	<script src="js/parser/section.grammar.js"></script>
+	<script src="js/parser/scene.grammar.js"></script>
+	<script src="js/lib/showdown.min.js"></script>
 </body>
 
 </html>
