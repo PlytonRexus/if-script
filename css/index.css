@@ -95,8 +95,7 @@ body {
 }
 
 .main-div {
-    /*background-color: rgb(192, 229, 231);*/
-    background: #555;
+    background: rgba(102, 102, 102, 0);
     color: white;
     transition: 0.3s;
     width: 50%;
@@ -107,10 +106,6 @@ body {
     text-align: justify;
     resize: horizontal;
     box-sizing: border-box;
-}
-
-.main-div a {
-    color: white;
 }
 
 #editor-div {
@@ -237,9 +232,10 @@ button:hover {
 /* Style the tab */
 .tab {
     overflow-x: auto;
-    border: 1px solid #ccc;
+    /* border: 1px solid #ccc; */
     background-color: #f1f1f1;
     height: 8%;
+    /*position: fixed;*/
 }
 
 /* Style the buttons inside the tab */
@@ -272,7 +268,6 @@ button:hover {
 .tabcontent1, .tabcontent2 {
     display: none;
     padding: 6px 12px;
-    border: 1px solid #ccc;
     border-top: none;
     min-height: 88%;
 }
@@ -283,7 +278,20 @@ button:hover {
 }
 
 .tabcontent2 {
-    height: 89.5%;
+    height: 100%;
+}
+
+.main-div a {
+    color: white;
+    text-decoration: none;
+    padding: 2px;
+    margin: 3px 0 3px 0;
+    font-weight: bolder;
+}
+
+.main-div a:hover {
+    background: white;
+    color: black;
 }
 
 /* Resizer */
@@ -300,18 +308,29 @@ button:hover {
 }
 
 /* General formatting */
-code {
+.code, code {
   padding: 5px;
-  background-color: lightgray;
+  background: lightgrey;
   color: black;
   font-family: monospace;
+  line-height: 1.9;
+  margin: 10px auto;
 }
 
 .highlighted {
-    background: darkgray;
+    background: lightgrey;
     padding: 10px;
     margin: 10px auto;
-    color: lightblue;
+    color: blue;
+}
+
+.plain-text {
+    font-family: sans-serif;
+    font-size: small;
+}
+
+.main-div h3 {   
+    font-family: sans-serif;
 }
 
 @media (max-width: 850px) {

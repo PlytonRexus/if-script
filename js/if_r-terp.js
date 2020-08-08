@@ -328,6 +328,10 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
         }
     },
 
+    executeJs: function(text) {
+        return eval(text);
+    },
+
     setTimer: function (timer, target) {
         return setTimeout(() => {
             IF.methods.switchSection(target);

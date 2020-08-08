@@ -83,7 +83,7 @@ var sectionG = {
     {"name": "section$subexpression$1$subexpression$1$ebnf$1", "symbols": ["section$subexpression$1$subexpression$1$ebnf$1$subexpression$1"], "postprocess": id},
     {"name": "section$subexpression$1$subexpression$1$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "section$subexpression$1$subexpression$1$ebnf$2$subexpression$1$string$1", "symbols": [{"literal":"@"}, {"literal":"m"}, {"literal":"u"}, {"literal":"s"}, {"literal":"i"}, {"literal":"c"}, {"literal":" "}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "section$subexpression$1$subexpression$1$ebnf$2$subexpression$1", "symbols": ["section$subexpression$1$subexpression$1$ebnf$2$subexpression$1$string$1", "_", "oneline"]},
+    {"name": "section$subexpression$1$subexpression$1$ebnf$2$subexpression$1", "symbols": ["section$subexpression$1$subexpression$1$ebnf$2$subexpression$1$string$1", "_", "oneline", "_"]},
     {"name": "section$subexpression$1$subexpression$1$ebnf$2", "symbols": ["section$subexpression$1$subexpression$1$ebnf$2$subexpression$1"], "postprocess": id},
     {"name": "section$subexpression$1$subexpression$1$ebnf$2", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "section$subexpression$1$subexpression$1$string$2", "symbols": [{"literal":"<"}, {"literal":"s"}, {"literal":"e"}, {"literal":"c"}, {"literal":"s"}, {"literal":"e"}, {"literal":"t"}], "postprocess": function joiner(d) {return d.join('');}},

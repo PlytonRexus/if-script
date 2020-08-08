@@ -165,7 +165,7 @@ class Passage extends Section {
 
 /* Grammar */
 let grammar = {
-    section: /ss>[a-zA-Z0-9"'-_:;\/\s!\*#\$\{\}]+?<ss/g,
+    section: /ss>[a-zA-Z0-9`@"'-_:;\/\s!\*#\$\{\}]+?<ss/g,
     comment: /\/\*[\s\S]*?\*\/|([^:]|^)\/\/.*$/gm, // /\\*[^*]*\\*+(?:[^/*][^*]*\\*+)*/ /\/\*(\*(?!\/)|[^*])*\*\//g
     passage: /pp>[a-zA-Z0-9"'-_:,\/\s!\*#;]+?<pp/g,
     title: /tt>[A-Za-z0-9 '\$\{\}]+?<tt/g,
@@ -248,10 +248,6 @@ function parseScene(string, serial) {
     let scene = parser.results[0];
     scene.serial = serial;
     return scene;
-
-    // parser.global(string);
-
-    // return feed;
 }
 
 /**

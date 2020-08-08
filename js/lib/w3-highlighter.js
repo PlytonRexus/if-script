@@ -2,10 +2,10 @@ function w3CodeColor(elmnt, mode) {
   var lang = (mode || "html");
   var elmntObj = (document.getElementById(elmnt) || elmnt);
   var elmntTxt = elmntObj.innerHTML;
-  var tagcolor = "white";
-  var tagnamecolor = "red";
-  var attributecolor = "blue";
-  var attributevaluecolor = "#3b8708";
+  var tagcolor = "#444";
+  var tagnamecolor = "mediumblue";
+  var attributecolor = "#3b8708";
+  var attributevaluecolor = "brown"; // #3b8708
   var commentcolor = "green";
   var cssselectorcolor = "brown";
   var csspropertycolor = "red";
