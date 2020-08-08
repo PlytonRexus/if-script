@@ -237,7 +237,6 @@ button:hover {
 /* Style the tab */
 .tab {
     overflow-x: auto;
-    overflow-y: hidden;
     border: 1px solid #ccc;
     background-color: #f1f1f1;
     height: 8%;
@@ -284,7 +283,7 @@ button:hover {
 }
 
 .tabcontent2 {
-    height: 88%;
+    height: 89.5%;
 }
 
 /* Resizer */

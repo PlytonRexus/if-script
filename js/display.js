@@ -127,7 +127,7 @@ let previewBtn = createElement('a', {
     onclick: function () {
         if (Object.keys(IF.story).length <= 0) return showAlert("You haven't run a story yet.");
         else {
-            window.open("/preview");
+            window.open("preview");
         }
     },
     'innerHTML': '&#128065 Preview'
