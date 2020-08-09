@@ -23,64 +23,52 @@ class IFError {
 let clickEvent = new Event('click');
 
 let instructions = 
-`/* 
-Welcome to this IF tutorial! 
-Press Parse Text to run the live preview of this tutorial.
-The download JS, CSS, Story and Story text buttons download different parts of the story to your device.
-*/
-
-/*------------------------------------------*/
-
-/*
-To embed this story on your website, put this in your html file:
-<link rel="stylesheet" href="if_r.css">
-
-<div id="if_r-output-area"></div>
-
-<script src="Story.js"></script>
-<script src="if_r-terp.js"></script>
-<script>
-loadStory(IF.story);
-loadSection(null, IF.story.settings.startAt);
-</script>
-*/
-
-/*------------------------------------------*/
-
-/* Each story can have special settings that decide how it ultimately behaves. These are optional and can be written as follows. */
-
-/*------------------------------------------*/
+`/*---------- Tutorial Story ----------*/
 
 settings>
-@referrable false 
 
-/* referrable persists older sections in the viewport */
+@referrable false
 
-@startAt 1 
-
-/* startAt decides the section where your story starts */
+@startAt 1
 
 @fullTimer 30000 [[3]]
 
-/* fullTimer sets the whole story on a timeout */
-
-/* Global variables that are visible everywhere */
-
-\${title='Freezion'}
-\${new=new}
-\${ten=10}
+\${title=Tutorial Story}
+\${new=100}
+\${ten=12}
+\${one=a string}
+\${rand=random(5,10)}
 
 <settings
 
 /*------------------------------------------*/
+/*------------------------------------------*/
 
-/* Use "ss>" to start a section.
-Use "<ss" to end a section. */
+scene> 
+  @first 3 
+  @music https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3
+  @sections 3 
+  @name first scene 
+<scene
+
+scene>
+  @first 2
+  @music https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3
+  @sections 2 
+@name second scene 
+<scene
+
+scene>
+  @first 1
+  @music https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3
+  @sections 1 
+  @name third scene 
+<scene
+
+/*------------------------------------------*/
+/*------------------------------------------*/
 
 ss> 
-
-/* Section serial 1. Sections are read in the order they are declared. */
-/* Use "tt>" and "<tt" to give titles to sections. Be careful, each section requires a section title and only the first title that you give will be parsed. You can have multiple sections with the same title. */
 
 secset>
     @timer 5000 [[3]]
@@ -88,36 +76,42 @@ secset>
 
 tt>The first section <tt
 
-/* Divide the content of sections in paragraphs like this. */
 This is the __first__ paragraph of the first section
 This is the second paragraph of the same section
-/* Each paragraph can be formatted through HTML syntax.
-This means that you can use most HTML elements like img and iframe inside them. */
 
-/* Display each section's choices this way */
-ch> Go to next section [[2]]<ch /* The number inside the square brackets represents the section serial that the choice must lead to */
-ch> Go to the section next to the next section [[3]]<ch
+The turn is \${turn}.
+
+ch> Start scene two [[scene:2]]<ch
+ch> Go to the next section [[2]]<ch
 ch> Input Choice: __input \${__one} [[3]] <ch
 <ss
 
-ss> /* Section serial 2. */
+/*------------------------------------------*/
+/*------------------------------------------*/
+
+ss>
 tt>The second section <tt
 
 This is the first paragraph of the second section
 This is the second paragraph of the same section
-ch> Go to previous section [[1]]<ch
+ch> Start third scene [[scene:3]]<ch
 ch> Go to next section [[3]] <ch
 <ss
 
-ss> /* Section serial 3. */
+/*------------------------------------------*/
+/*------------------------------------------*/
+
+ss>
 tt>The third \${title}<tt
 
 This is the first paragraph of the third \${one}
 This is the second paragraph of the same section
 ch> Go to previous section [[2]] <ch
-ch> 10 \${__one} [[1]] <ch
-/* Hello, from a comment! */
-<ss`;
+ch> Start the first scene \${__new=ten} [[scene:1]] <ch
+<ss
+
+/*------------------------------------------*/
+/*------------------------------------------*/`;
 
 let statsInstructions = `
 /*

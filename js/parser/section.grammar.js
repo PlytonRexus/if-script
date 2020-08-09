@@ -117,7 +117,7 @@ var sectionG = {
         
             if (d[2][0] && d[2][0][3] && d[2][0][3][0]) {
                 settings.timer = {};
-                settings.music = parseInt(d[2][0][3][0][2]);
+                settings.music = d[2][0][3][0][2];
             } else {
                 settings.timer = {};
                 settings.music = null;

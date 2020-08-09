@@ -159,8 +159,14 @@
 .if_r-choice-input {
   margin: 2px;
   outline: none;
-  border: 0 0 0 0;
-  
+  border: none;
+  border-bottom: 2px solid white;
+  color: white;
+  background: rgba(0, 0, 0, 0);
+}
+
+.if_r-choice-input:hover {
+  color: black;
 }
 
 /* Sidebar stats end */
