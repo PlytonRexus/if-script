@@ -164,12 +164,33 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
         if (vars) {
             vars.forEach(val => {
                 let varName = val.replace(/\$\{/, "").replace(/\}/, "").trim();
+                let randomRegex = /random\([0-9]*,[0-9]*\)/;
                 if (IF.story.variables[varName] || IF.story.variables[varName] === 0) {
-                    if(IF.DEBUG) console.log("Replacing:", varName, " with", IF.story.variables[varName]);
+
+                    if(IF.DEBUG) 
+                        console.log("Replacing:", varName, " with", IF.story.variables[varName]);
+
+                    let valReplace = IF.story.variables[varName];
+
+                    let arr = null;
+                    if (typeof valReplace === 'string') 
+                        arr = (IF.story.variables[varName]).match(randomRegex);
+                    if (arr && arr.length > 0) {
+                        let [num1, num2] = arr[0].match(/[0-9]*/g);
+                        num1 = parseInt(num1);
+                        num2 = parseInt(num2);
+
+                        valReplace = 
+                        Math.floor(
+                            Math.random() 
+                            * (Math.max(num2, num1) - Math.min(num2, num1))) 
+                        + Math.min(num2, num1);
+                    }
+
                     text =
                         text.replace(
                             new RegExp("\\$\\{\\s*" + varName + "\\s*\\}"),
-                            IF.story.variables[varName]
+                            valReplace
                         );
                 } else {
                     if(IF.DEBUG) 
@@ -411,7 +432,25 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
     },
 
     doSceneActions: function(scene) {
-        console.log("Doing relevant scene actions...");
+        if (IF.DEBUG) console.log("Doing relevant scene actions...");
+
+        IF.state.scene = scene;
+
+        let { music } = IF.state.scene;
+
+        if (music) {
+            try {
+                let url = new URL(music);
+                document.querySelector("#if_r-audio-source").src = music;
+                let player = document.querySelector("#if_r-audio-player");
+                player.load();
+                player.play();
+                // .then(d => console.log("Playing audio now."))
+                // .catch(e => console.log(e));
+            } catch(e) {
+                if(IF.DEBUG) console.log("Invalid URL.");
+            }
+        }
     },
 
     resetStory: function () {
@@ -470,10 +509,14 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
 
         $main.innerHTML = `
         <div id="${IF.methods.replaceHash(IF.dom.stats_div_id)}" class="${IF.methods.replaceDot(IF.dom.stats_div_class)}">
-          <a href="javascript:void(0)" class="closebtn">&times;</a>
-          <a href="#" id="${IF.methods.replaceHash(IF.dom.reset_button_id)}">Restart</a>
-          <a href="#" id="${IF.methods.replaceHash(IF.dom.undo_button_id)}">Undo</a>
-          ${`<a href="#" id="">Stats</a>` /* does nothing */}
+            <a href="javascript:void(0)" class="closebtn">&times;</a>
+            <a href="#" id="${IF.methods.replaceHash(IF.dom.reset_button_id)}">Restart</a>
+            <a href="#" id="${IF.methods.replaceHash(IF.dom.undo_button_id)}">Undo</a>
+            ${`<a href="#" id="">Stats</a>` /* does nothing */}
+            <audio controls id="if_r-audio-player">
+                <source src="" type="audio/mp3" id="if_r-audio-source">
+                Your browser does not support the audio.
+            </audio>
         </div>
         <div id="if_r-status-bar">
         <div id="${IF.methods.replaceHash(IF.dom.alert_area_id)}">
