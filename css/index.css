@@ -176,21 +176,9 @@ body {
     background: white;
 }
 
-/* button {
-    display: block;
-    width: 300px;
-    margin: 3px auto 0;
-    padding: 5px;
-    border: none;
-    border-radius: 6px;
-    color: #fff;
-    background-color: #74637f;
-    font: 18px 'Opens Sans', sans-serif;
-    letter-spacing: 1px;
-    appearance: none;
-    cursor: pointer;
-    margin-bottom: 15px;
-} */
+button {
+    outline: none;
+}
 
 button:hover {
     color: #74637f;
@@ -331,6 +319,23 @@ button:hover {
 
 .main-div h3 {   
     font-family: sans-serif;
+}
+
+/* Tools */
+
+.tool-btn {
+    display: block;
+    width: 80%;
+    margin: 3px auto;
+    padding: 10px;
+    border: none;
+    color: black;
+    background-color: white;
+    font: 18px 'Opens Sans', sans-serif;
+    letter-spacing: 1px;
+    appearance: none;
+    cursor: pointer;
+    margin-bottom: 15px;
 }
 
 @media (max-width: 850px) {

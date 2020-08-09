@@ -50,6 +50,13 @@ Your name is ${name}.
 ```
 Obviously, here, variable `name` was used to store the name of a character.
  The variables can also be used in conditional logic to determine which [choices](#choice-syntax) and (in a future release) what paragraphs of a [section's](#section-syntax) text should be visible to the reader. You can find more about this under the [choices](#choice-syntax) heading.
+
+You can assign variables beforehand inside story [settings](#settings-syntax).
+
+```
+${name='Felicity'}
+```
+
  *It is recommended (albeit not required) to keep the* `title`*variable set as the title of the story.*
 
 ### [Story Settings](#settings-syntax)
@@ -134,9 +141,18 @@ ch>
 <ch
 ```
 Choices can also do actions like addition (+), subtraction (-), multiplication (\*) and division (/) on variables.
+
+- `${__var1 = var2}` Assignment
+- `${__var1 + var2}` Addition
+- `${__var1 - var2}` Subtraction
+- `${__var1 * var2}` Multiplication
+- `${__var1 / var2}` Division
+
+In each of these, the first variable is assigned values that result from the operation.
 ```
 ch>
-   The power of your name goes up and you health is multiplied
-   ${__namePower + 10} ${__health * 3} [[5]]
+   The power of your name goes up 10 units and your health 
+    is multiplied \${namePower} times.
+   ${__namePower + 10} ${__health * namePower} [[5]]
 <ch
 ```

@@ -1,3 +1,5 @@
+IF.DEBUG = false;
+
 IF.dom = {
     target_id: "#if_r-output-area",
     alert_area_id: "#if_r-alerts-area",
@@ -56,8 +58,6 @@ IF.methods = {
         parasText = IF.methods.replaceVars(parasText, paraVars);
         parasText = IF.methods.formatText(parasText);
 
-        console.log(parasText);
-
         wrapper += `<div class="if_r-section" id="section-${serial}">`;
 
         wrapper += `<h3 class="if_r-section-title">${titleText}</h3>`;
@@ -93,7 +93,7 @@ IF.methods = {
 wrapper += `<li class="if_r-section-choice-li">
 <a class="if_r-section-choice" data-if_r-target="${target}" 
 data-if_r-owner="${owner}" id="if_r-${serial}-choice-${i}" 
-data-if_r-mode="${mode}" data-if_r-i="${i}"
+data-if_r-mode="${mode}" data-if_r-i="${i}" href="#"
 data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
 </li>`;
             }
@@ -164,13 +164,16 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
         if (vars) {
             vars.forEach(val => {
                 let varName = val.replace(/\$\{/, "").replace(/\}/, "").trim();
-                if (IF.story.variables[varName]) {
+                if (IF.story.variables[varName] || IF.story.variables[varName] === 0) {
+                    if(IF.DEBUG) console.log("Replacing:", varName, " with", IF.story.variables[varName]);
                     text =
                         text.replace(
                             new RegExp("\\$\\{\\s*" + varName + "\\s*\\}"),
                             IF.story.variables[varName]
                         );
                 } else {
+                    if(IF.DEBUG) 
+                        console.log("Rejecting:", varName, ", because the value is =", IF.story.variables[varName]);
                     text =
                         text.replace(
                             new RegExp("\\$\\{\\s*" + varName + "\\s*\\}"),
@@ -247,17 +250,24 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
 
     setState: function (opts) {
         Object.keys(opts).forEach(opt => {
-            if (opt !== "section")
+            if (opt !== "section") {
                 IF.state[opt] = opts[opt];
-            else
-                IF.state['section'] = IF.story.findSection(opts['section']);
+                // if (opt === "turn") 
+                //     IF.methods.changeTurn(null, opts[opt]);
+            }
+            else if (opt === "section") {
+                // if (IF.DEBUG) console.log(IF.story.findSection(opts['section']));
+                IF.state.section = IF.story.findSection(opts.section);
+            }
         });
     },
 
-    changeTurn: function (change) {
+    changeTurn: function (change, abs) {
         IF.methods.setState({
-            turn: change ? (IF.state.turn + change) : IF.state.turn + 1
+            turn: abs || (change ? (IF.state.turn + change) : IF.state.turn + 1)
         });
+
+        IF.story.variables.turn = abs || (change ? (IF.state.turn + change) : IF.state.turn + 1);
     },
 
     showStats: function () {
@@ -265,7 +275,7 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
         let statsHTML = `<pre> <b>Turn:</b> ${IF.state.turn}   `;
 
         stats.forEach(stat => {
-            statsHTML += `<b>${stat}:</b> ${IF.story.variables[stat]}   `;
+            if (stat !== "turn")statsHTML += `<b>${stat}:</b> ${IF.story.variables[stat]}   `;
         });
 
         statsHTML += `</pre>`;
@@ -282,9 +292,11 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
     },
 
     changeVariables: function (vars, to) {
+        /* Precautionary saving of old values of variables. */
         IF.methods.recordOldValues(vars);
+
         vars.forEach(variable => {
-            IF.story.variables[variable] = parseInt(to) ?? to;
+            IF.story.variables[variable] = parseInt(to) ? parseInt(to) : to;
         });
     },
 
@@ -328,6 +340,10 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
         }
     },
 
+    executeJs: function(text) {
+        return eval(text);
+    },
+
     setTimer: function (timer, target) {
         return setTimeout(() => {
             IF.methods.switchSection(target);
@@ -361,29 +377,41 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
         document.querySelectorAll(".if_r-section-choice").forEach(choice => {
             choice.onclick = (e) => {
                 e.preventDefault();
-                let mode = choice.getAttribute("data-if_r-mode");
-                let vars = choice.getAttribute("data-if_r-variables") ? choice.getAttribute("data-if_r-variables").split(", ") : [];
                 let choiceI = choice.getAttribute("data-if_r-i");
-                let actions = IF.state.section.findChoice(choiceI).actions;
+                let { actions, targetType, owner, mode, variables:vars, target:tar } = IF.state.section.findChoice(choiceI);
+
+                // if (IF.DEBUG) console.log("owner:", owner);
+
+                if (targetType === 'scene') {
+                    let scene = IF.story.findScene(tar);
+                    if (IF.DEBUG===true) console.log("Going to scene " + tar);
+                    tar = scene.first;
+                    if (IF.DEBUG===true) console.log("Starting section " + tar);
+                    IF.methods.doSceneActions(scene);
+                }
 
                 if (mode === 'input') {
                     let inputValue = document.querySelector(`#if_r-choice-input-${choiceI}`).value;
                     if (inputValue === "") {
-                        IF.methods.showAlert("Empty input not allowed!");
+                        // if (IF.DEBUG === true) IF.methods.showAlert("Empty input not allowed!");
                     } else {
                         choice.onclick = "";
                         IF.methods.changeVariables(vars, inputValue);
                         if (actions) IF.methods.doActions(actions);
-                        IF.methods.switchSection(e.target.getAttribute("data-if_r-target"));
+                        IF.methods.switchSection(tar);
                     }
                 } else {
                     choice.onclick = "";
                     IF.methods.changeVariables(vars, choice.innerHTML);
                     if (actions) IF.methods.doActions(actions);
-                    IF.methods.switchSection(e.target.getAttribute("data-if_r-target"));
+                    IF.methods.switchSection(tar);
                 }
             };
         });
+    },
+
+    doSceneActions: function(scene) {
+        console.log("Doing relevant scene actions...");
     },
 
     resetStory: function () {
@@ -444,8 +472,8 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
         <div id="${IF.methods.replaceHash(IF.dom.stats_div_id)}" class="${IF.methods.replaceDot(IF.dom.stats_div_class)}">
           <a href="javascript:void(0)" class="closebtn">&times;</a>
           <a href="#" id="${IF.methods.replaceHash(IF.dom.reset_button_id)}">Restart</a>
-		  <a href="#" id="${IF.methods.replaceHash(IF.dom.undo_button_id)}">Undo</a>
-		  ${`<a href="#" id="">Stats</a>` /* does nothing */}
+          <a href="#" id="${IF.methods.replaceHash(IF.dom.undo_button_id)}">Undo</a>
+          ${`<a href="#" id="">Stats</a>` /* does nothing */}
         </div>
         <div id="if_r-status-bar">
         <div id="${IF.methods.replaceHash(IF.dom.alert_area_id)}">
@@ -467,30 +495,37 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
         console.info("Display loaded.");
     },
 
+    resetVariables: function() {
+        IF.story.variables = {};
+        Object.keys(IF.story.persistent)
+        .forEach(key => IF.story.variables[key] = IF.story.persistent[key]);
+    },
+
     addMethods: function () {
         IF.story.findSection = function (serial) {
-            let index = this.sections.findIndex(section => {
+            let index = IF.story.sections.findIndex(section => {
+                // if (IF.DEBUG) console.log(section);
                 return section.serial === serial ? true : false;
             });
 
             if (index == -1) {
-                console.warn("No section " + serial + " found. Reverting to default section serial 1.");
+                if (IF.DEBUG) console.warn("No section " + serial + " found. Reverting to default section serial 1.");
                 index = 0;
             }
-            return this.sections[index];
+            return IF.story.sections[index];
         }
 
         IF.story.findPassage = function (serial) {
-            let index = this.passages.findIndex(passage => {
+            let index = IF.story.passages.findIndex(passage => {
                 return passage.serial === serial ? true : false;
             });
 
             if (index === -1) {
-                console.warn("No passage " + serial + " found. Reverting to default passage serial 1.");
+                if (IF.DEBUG) console.warn("No passage " + serial + " found. Reverting to default passage serial 1.");
                 index = 0;
             }
 
-            return this.passages[index];
+            return IF.story.passages[index];
         }
 
         IF.story.sections = IF.story.sections.map(section => {
@@ -508,6 +543,19 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
 
             return section;
         });
+
+        IF.story.findScene = function(serial, name) {
+            let index = IF.story.scenes.findIndex(scene => {
+                return scene.serial === serial ? true : false;
+            });
+
+            if (index === -1) {
+                if (IF.DEBUG) console.warn("No scene " + serial + " found. Reverting to default scene 1.");
+                index = 0;
+            }
+
+            return IF.story.scenes[index];
+        }
     },
 
     loadStory: function (story) {
@@ -517,20 +565,39 @@ data-if_r-variables="${variables.join(", ")}">${choiceText}</a>
         IF.methods.addMethods();
 
         IF.story = story;
+
+        /* Bring variables to original values. */
+        IF.methods.resetVariables();
+
+        /* Set timer, if any. */
         let {
             timer,
             target
         } = IF.story.settings.fullTimer;
         if (timer !== 0) IF.methods.setTimer(timer, target);
+
+        /* Set initial state and initial variables */
         IF.methods.setState({
             section: IF.story.settings.startAt,
             turn: 0
         });
+        IF.story.variables.turn = 0;
 
+        /* Load the section into the viewport */
         IF.methods.loadSection(null, IF.story.settings.startAt);
+
+        /* Start the stats bar */
         IF.methods.showStats();
+
+        /* Hide the undo button because the story's just 
+         * started and no turns have been played.
+         */
         document.querySelector(IF.dom.undo_button_id).style.display = "none";
-        console.clear();
+
+        /* Clear the console to make things clearer */
+        if(!IF.DEBUG) console.clear();
+
+        /* Good luck! */
         console.info("Load finished. Happy playing!");
     }
 }

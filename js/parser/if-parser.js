@@ -23,10 +23,11 @@ class Story {
         this.settings.fullTimer = fullTimer;
         this.variables = {};
         if (globals) {
-            Object.keys(globals).forEach(global => {
-                this.variables[global] = globals[global];
+            Object.keys(globals).forEach(globalV => {
+                this.variables[globalV] = globals[globalV];
             })
         }
+        this.persistent = this.variables;
         this.stats = stats;
     }
 
@@ -180,8 +181,8 @@ let grammar = {
     variable: /\$\{[a-zA-Z0-9=]+?\}/g,
     input: /__input/,
     secTimer: /@timer [0-9]+ \[\[\d+\]\]/,
-    variableAssignment: /\$\{[a-zA-Z0-9]+?=[a-zA-Z0-9_ ']+?\}/g,
-    varValue: /[a-zA-Z0-9_ ]+/,
+    variableAssignment: /\$\{[a-zA-Z0-9]+?=[a-zA-Z0-9_ "'\(\)]+?\}/g,
+    varValue: /[a-zA-Z0-9_ "\(\)]+/,
     setVarAsTarget: /\$\{__[a-zA-Z0-9_=]+?\}/g,
     html: /<\s*\w+[^>]*>(.*?)(<\s*\/\s*\w+>)|/g,
     scene: /scene>[a-zA-Z0-9"'-_:;@\/\s!\*#\$\{\}]+?<scene/gm
@@ -222,7 +223,7 @@ function parseText(text) {
     let passaged = (text.match(grammar.passage) || [])
     .map(passage => parsePassage(passage));
 
-    let story = new Story(Date.now().toString(), { sections: sectioned, passages: passaged }, { referrable, startAt, fullTimer }, { globals });
+    let story = new Story(Date.now().toString(), { sections: sectioned, passages: passaged, scenes: scened }, { referrable, startAt, fullTimer }, { globals });
 
     return story;
 }

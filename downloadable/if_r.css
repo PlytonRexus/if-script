@@ -156,6 +156,13 @@
   margin-left: 50px;
 }
 
+.if_r-choice-input {
+  margin: 2px;
+  outline: none;
+  border: 0 0 0 0;
+  
+}
+
 /* Sidebar stats end */
 
 @media (max-width: 800px) {

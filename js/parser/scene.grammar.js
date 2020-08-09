@@ -10,7 +10,7 @@ class Scene {
         }
 
         this.sections = sections;
-        this.first = first || sections[0];
+        this.first = parseInt(first) || sections[0];
 
         this.name = name || "Untitled";
         this.music = music;
@@ -30,9 +30,11 @@ var sceneG = {
     {"name": "scene$subexpression$1$ebnf$2", "symbols": ["scene$subexpression$1$ebnf$2$subexpression$1"], "postprocess": id},
     {"name": "scene$subexpression$1$ebnf$2", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "scene$subexpression$1$subexpression$1$string$1", "symbols": [{"literal":"@"}, {"literal":"s"}, {"literal":"e"}, {"literal":"c"}, {"literal":"t"}, {"literal":"i"}, {"literal":"o"}, {"literal":"n"}, {"literal":"s"}, {"literal":" "}], "postprocess": function joiner(d) {return d.join('');}},
-    {"name": "scene$subexpression$1$subexpression$1$ebnf$1", "symbols": ["LNS"]},
-    {"name": "scene$subexpression$1$subexpression$1$ebnf$1", "symbols": ["scene$subexpression$1$subexpression$1$ebnf$1", "LNS"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
-    {"name": "scene$subexpression$1$subexpression$1", "symbols": ["scene$subexpression$1$subexpression$1$string$1", "_", "scene$subexpression$1$subexpression$1$ebnf$1"]},
+    {"name": "scene$subexpression$1$subexpression$1$ebnf$1$subexpression$1", "symbols": ["LN", "__"]},
+    {"name": "scene$subexpression$1$subexpression$1$ebnf$1", "symbols": ["scene$subexpression$1$subexpression$1$ebnf$1$subexpression$1"]},
+    {"name": "scene$subexpression$1$subexpression$1$ebnf$1$subexpression$2", "symbols": ["LN", "__"]},
+    {"name": "scene$subexpression$1$subexpression$1$ebnf$1", "symbols": ["scene$subexpression$1$subexpression$1$ebnf$1", "scene$subexpression$1$subexpression$1$ebnf$1$subexpression$2"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
+    {"name": "scene$subexpression$1$subexpression$1", "symbols": ["scene$subexpression$1$subexpression$1$string$1", "_", "scene$subexpression$1$subexpression$1$ebnf$1", "_"]},
     {"name": "scene$subexpression$1$ebnf$3$subexpression$1$string$1", "symbols": [{"literal":"@"}, {"literal":"n"}, {"literal":"a"}, {"literal":"m"}, {"literal":"e"}, {"literal":" "}], "postprocess": function joiner(d) {return d.join('');}},
     {"name": "scene$subexpression$1$ebnf$3$subexpression$1", "symbols": ["scene$subexpression$1$ebnf$3$subexpression$1$string$1", "_", "LNS", "_"]},
     {"name": "scene$subexpression$1$ebnf$3", "symbols": ["scene$subexpression$1$ebnf$3$subexpression$1"], "postprocess": id},

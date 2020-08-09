@@ -10,7 +10,7 @@ import {
 ///////////////////////////////////
 
 function fetchFile(addr, site) {
-    fetch(addr) // 1) fetch the url
+    fetch(addr)
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -35,6 +35,25 @@ function showAlert(text) {
     let alertArea = document.querySelector("#alerts-area");
     alertArea.style.display = "block";
     alertArea.innerHTML = text;
+}
+
+function insertAtCursor(field, value) {
+    if (document.selection) {
+        field.focus();
+        sel = document.selection.createRange();
+        sel.text = value;
+    }
+    else if (field.selectionStart || field.selectionStart == '0') {
+        var startPos = field.selectionStart;
+        var endPos = field.selectionEnd;
+        field.value = field.value.substring(0, startPos)
+            + value
+            + field.value.substring(endPos, field.value.length);
+        field.selectionStart = startPos + value.length;
+        field.selectionEnd = startPos + value.length;
+    } else {
+        field.value += value;
+    }
 }
 
 ///////////////////////////////////
@@ -348,16 +367,87 @@ let helpcon = createElement('div', {
     innerHTML: helpHtml
 });
 
+///////////// TOOLS ///////////////
+
+let insertSectionBtn = createElement('button', {
+    class: 'tool-btn'
+}, null, {
+    innerHTML: 'Add Section',
+    onclick: function(event) {
+        let sectionText = 
+`
+ss>
+  secset>
+    @timer 10000
+    @music link
+  <secset
+
+  tt> Untitled Section <tt
+
+  Content
+
+  ch> A choice [[1]] <ch
+  ch> Another choice [[2]] <ch
+<ss`;
+        insertAtCursor(document.querySelector("#if_r-input-area"), sectionText);
+    }
+});
+
+let insertSceneBtn = createElement('button', {
+    class: 'tool-btn'
+}, null, {
+    innerHTML: 'Add Scene',
+    onclick: function(event) {
+        let sceneText = 
+`
+scene>
+  @first section_number
+  @music link
+  @sections space_seperated_section_numbers
+  @name custom_name_for_scene
+<scene`;
+        insertAtCursor(document.querySelector("#if_r-input-area"), sceneText);
+    }
+});
+
+let insertChoiceBtn = createElement('button', {
+    class: 'tool-btn'
+}, null, {
+    innerHTML: 'Add Choice',
+    onclick: function(event) {
+        let choiceText = 
+        `
+ch> \${__if name == "" || namePower <= 0} Type in your name here __input \${__name} [[5]] <ch`;
+        insertAtCursor(document.querySelector("#if_r-input-area"), choiceText);
+    }
+});
+
+let insertCommentBtn = createElement('button', {
+    class: 'tool-btn'
+}, null, {
+    innerHTML: 'Add Comment',
+    onclick: function(event) {
+        let commentText = 
+`
+/* A
+multi-line
+comment */`;
+        insertAtCursor(document.querySelector("#if_r-input-area"), commentText);
+    }
+});
+
 let toolcon = createElement('div', {
     id: 'Tools',
     class: 'tabcontent2'
-}, null, {
-    innerHTML: `<h3>Tools</h3>
-    <p>The tools page.</p>`
-});
+}, null, null, [insertSectionBtn, insertSceneBtn, insertChoiceBtn, insertCommentBtn]);
 
-let instructDiv = createElement('i', { id: "instructDiv" }, null, {
-    innerHTML: "Click Run to start playing!"
+/////////// TOOLS END /////////////
+
+let instructDiv = createElement('div', { id: "instructDiv" }, {
+    margin: 'auto',
+    'text-align': 'center'
+}, {
+    innerHTML: "<p class='plain-text'>Click Run to start playing!</p>"
 });
 
 let outcon = createElement('div', {

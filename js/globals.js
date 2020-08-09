@@ -1,7 +1,27 @@
 var ua = window.navigator.userAgent.toLowerCase();
 var isIE = !!ua.match(/msie|trident\/7|edge/);
 
-let lorem = `Lorem ipsum dolor sit amet consectetur adipisicing elit. Nisi provident numquam sapiente iure culpa dolorem at, hic, qui fugiat sunt magnam temporibus rerum dicta, in obcaecati maxime consequuntur molestias est? <br />`
+let IF = {};
+IF.story = {};
+IF.grammar = {};
+IF.state = {};
+IF.DEBUG = true;
+
+class IFError {
+    constructor(str = "", code, dontLogInstantly) {
+        this.message = str;
+        this.expectedLine = this.message.split("\n")[2];
+        this.code = code || null;
+        if (!dontLogInstantly) this.log();
+    }
+
+    log() {
+        console.log("Error at:\n", this.expectedLine);
+    };
+}
+
+let clickEvent = new Event('click');
+
 let instructions = 
 `/* 
 Welcome to this IF tutorial! 
@@ -109,7 +129,7 @@ let helpHtml = `
 <div class="code" id="alerts-area"></div>
 
 <p class="plain-text">
-Press &#9654; or Run to run the live preview of the story.
+Press &#9654; Run to run the live preview of the story.
 </p>
 
 <p class="plain-text"> 
@@ -176,13 +196,22 @@ and (in a future release) what paragraphs of a <a href="#section-syntax">section
 text should be visible to the reader.
 You can find more about this under the <a href="#choice-syntax">choices</a> heading.
 <br/>
+
+<p class="plain-text">
+You can assign variables beforehand inside story <a href="#settings-syntax">settings</a>.
+</p>
+
+<div class="code">
+\${name='Felicity'}
+</div>
+
 <em>It is recommended (albeit not required) to keep the </em>
 <code>title</code><em> variable set as the title of the story.</em>
 </p>
 
 <h3 id="settings-syntax"><a href="#settings-syntax">Story Settings</a></h3>
 <p class="plain-text">
-Story settings allow you to customise the overall experiance of the story.
+Story settings allow you to customise the overall experience of the story.
 All of the settings are optional.
 The available settings are:
 <ul>
@@ -253,7 +282,7 @@ Scenes are collections of <a href="#scene-syntax">sections</a>
 <h3 id="choice-syntax"><a href="#choice-syntax">Choices</a></h3>
 <p class="plain-text">
     Choice are the sole method to navigate a story by reaching
-    <a href="#section-syntax">sections</a> or <a href="#scene-syntax">Scenes</a>.
+    <a href="#section-syntax">sections</a> or <a href="#scene-syntax">scenes</a>.
     To send to a section:
 </p>
 <div class="code">
@@ -325,38 +354,27 @@ Available operators are:
 </div>
 
 <p class="plain-text">
-Choices can also do actions like addition (+), subtraction (-), 
-multiplication (*) and division (/) on variables.
+Choices can also do actions like
+</p>
+<ul>
+    <li class="plain-text"> <code>\${__var1 = var2}</code> &nbsp; Assignment
+    <li class="plain-text"> <code>\${__var1 + var2}</code> &nbsp; Addition
+    <li class="plain-text"> <code>\${__var1 - var2}</code> &nbsp; Subtraction
+    <li class="plain-text"> <code>\${__var1 * var2}</code> &nbsp; Multiplication
+    <li class="plain-text"> <code>\${__var1 / var2}</code> &nbsp; Division
+</ul>
+<p class="plain-text">
+In each of these, the first variable is assigned values that result from the operation.
 </p>
 
 <div class="code">
     ch&gt;
     <br/>
-    &nbsp;&nbsp;The power of your name goes up and you health 
-    is multiplied
+    &nbsp;&nbsp;The power of your name goes up 10 units and your health 
+    is multiplied \${namePower} times.
     <br/>
-    &nbsp;&nbsp;\${__namePower + 10} \${__health * 3} [[5]]
+    &nbsp;&nbsp;\${__namePower + 10} \${__health * namePower} [[5]]
     <br/>
     &lt;ch
 </div>
 `;
-
-let IF = {};
-IF.story = {};
-IF.grammar = {};
-IF.state = {};
-
-class IFError {
-    constructor(str = "", code, dontLogInstantly) {
-        this.message = str;
-        this.expectedLine = this.message.split("\n")[2];
-        this.code = code || null;
-        if (!dontLogInstantly) this.log();
-    }
-
-    log() {
-        console.log("Error at:\n", this.expectedLine);
-    };
-}
-
-let clickEvent = new Event('click');
