@@ -25,9 +25,9 @@ In your body, add the following scripts.
 
 ```html
 <div id="if_r-output-area"></div>
-<script src="tests/Story.js"></script>
-<script src="downloadable/if_r-terp.js"></script>
-<script src="js/lib/showdown.min.js"></script>
+<script src="Story.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/plytonrexus/if-script@v0.4-alpha/js/if_r-terp.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/showdown@1.9.1/dist/showdown.min.js"></script>
 <script> IF.methods.loadStory(IF.story); </script>
 ```
 

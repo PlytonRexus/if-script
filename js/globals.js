@@ -141,11 +141,11 @@ You can use Markdown to format your story.
 <div class="highlighted">
     &lt;div id=&quot;if_r-output-area&quot;&gt;&lt;/div&gt;
     <br/> 
-    &lt;script src=&quot;tests/Story.js&quot;&gt;&lt;/script&gt;
+    &lt;script src=&quot;Story.js&quot;&gt;&lt;/script&gt;
     <br/>    
-    &lt;script src=&quot;downloadable/if_r-terp.js&quot;&gt;&lt;/script&gt;
+    &lt;script src=&quot;https://cdn.jsdelivr.net/gh/plytonrexus/if-script@v0.4-alpha/js/if_r-terp.js&quot;&gt;&lt;/script&gt;
     <br/>    
-    &lt;script src=&quot;js/lib/showdown.min.js&quot;&gt;&lt;/script&gt;    
+    &lt;script src=&quot;https://cdn.jsdelivr.net/npm/showdown@1.9.1/dist/showdown.min.js&quot;&gt;&lt;/script&gt;    
     <br/>
     &lt;script&gt;
         IF.methods.loadStory(IF.story);
