@@ -134,7 +134,7 @@ You can use Markdown to format your story.
 <h3 id="embed-scripts"><a href="#embed-scripts">Embedding</a></h3>
 <p class="plain-text">Within the head tag, add the following.</p>
 <div class="highlighted">   
-    &lt;link rel=&quot;stylesheet&quot; href=&quot;downloadable/if_r.css&quot;&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/plytonrexus/if-script@v0.4-alpha/downloadable/if_r.css&quot;&gt;
 </div>
 
 <p class="plain-text">In your body, add the following scripts.</p>

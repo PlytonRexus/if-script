@@ -18,7 +18,7 @@ A Regular Expression based parser is on the [if-script-regex](https://github.com
 Within the head tag, add the following.
 
 ```html
-<link rel="stylesheet" href="downloadable/if_r.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/plytonrexus/if-script@v0.4-alpha/downloadable/if_r.css">
 ```
 
 In your body, add the following scripts.
