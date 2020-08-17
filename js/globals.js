@@ -22,8 +22,11 @@ class IFError {
 
 let clickEvent = new Event('click');
 
-let instructions = 
-`/*---------- Tutorial Story ----------*/
+let tracking = [{"0": "s", "1": "Control"}];
+let down = [];
+
+let instructions =
+    `/*---------- Tutorial Story ----------*/
 
 settings>
 
@@ -119,11 +122,10 @@ This is a stub. Will get to this as soon as possible!
 */`;
 
 let helpHtml = `
-<h3>Help</h3>
 <div class="code" id="alerts-area"></div>
 
-<p class="plain-text">
-Press &#9654; Run to run the live preview of the story.
+<p class="plain-text tooltip">
+Press <span class="tooltiptext"> The top-left corner</span>&#9654; Run to run a live preview of the story.
 </p>
 
 <p class="plain-text"> 
@@ -372,3 +374,8 @@ In each of these, the first variable is assigned values that result from the ope
     &lt;ch
 </div>
 `;
+
+let settingsHtml = `
+<div class='settings-modal'>
+    <h2>Settings</h2>
+</div>`;

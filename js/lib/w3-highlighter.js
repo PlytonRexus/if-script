@@ -1,6 +1,6 @@
 function w3CodeColor(elmnt, mode) {
   var lang = (mode || "html");
-  var elmntObj = (document.getElementById(elmnt) || elmnt);
+  var elmntObj = (typeof elmnt === "string" ? document.getElementById(elmnt) : elmnt);
   var elmntTxt = elmntObj.innerHTML;
   var tagcolor = "#444";
   var tagnamecolor = "mediumblue";
@@ -42,6 +42,7 @@ function w3CodeColor(elmnt, mode) {
     this.rest = d + str;
     this.arr = a;
   }
+  
   function htmlMode(txt) {
     var rest = txt, done = "", php, comment, angular, startpos, endpos, note, i;
     comment = new extract(rest, "&lt;!--", "--&gt;", commentMode, "W3HTMLCOMMENTPOS");

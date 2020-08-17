@@ -13,7 +13,7 @@ You can use Markdown to format your story. [Markdown cheat-sheet](https://www.ma
 
 A Regular Expression based parser is on the [if-script-regex](https://github.com/PlytonRexus/if-script/tree/if-script-regex) branch.
 
-### [Embedding](#embed-scripts)
+### [Embedding](#embedding)
 
 Within the head tag, add the following.
 
@@ -33,7 +33,7 @@ In your body, add the following scripts.
 
 *The indentation does not matter.*
 
-### [Comments](#comment-syntax)
+### [Comments](#comments)
 
 A comment is a text block that is not integrated into the final model of the story. Comments exist to help write cleaner stories. For example, by pointing out purposes of certain portions of the story.
 ```
@@ -42,7 +42,7 @@ A comment is a text block that is not integrated into the final model of the sto
  comment */
  ```
 
-### [Variables](#variable-syntax)
+### [Variables](#variables)
 
 Variables truly create dynamic stories. You can use variables to store a lot of things like character names, inventory items, visited scenes, number of things and many others. You can then display the values of these variables anywhere like so:
 ```
@@ -59,7 +59,7 @@ ${name='Felicity'}
 
  *It is recommended (albeit not required) to keep the* `title`*variable set as the title of the story.*
 
-### [Story Settings](#settings-syntax)
+### [Story Settings](#story-settings)
 
 Story settings allow you to customise the overall experiance of the story. All of the settings are optional. The available settings are:
 
@@ -74,7 +74,7 @@ settings>
 <settings
 ```
 
-### [Scenes](#scene-syntax)
+### [Scenes](#scenes)
 
 Scenes are collections of [sections](#scene-syntax)
 ```
@@ -100,7 +100,7 @@ ss>
    */
 <ss
 ```
-### [Choices](#choice-syntax)
+### [Choices](#choices)
 
 Choice are the sole method to navigate a story by reaching [sections](#section-syntax) or [scenes](#scene-syntax). To send to a section:
 ```

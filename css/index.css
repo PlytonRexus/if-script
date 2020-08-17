@@ -20,6 +20,124 @@ body {
     overflow: auto;
 }
 
+/* The Modal */
+.modal {
+    display: none;
+    /* Hidden by default */
+    position: fixed;
+    /* Stay in place */
+    z-index: 1;
+    /* Sit on top */
+    padding-top: 100px;
+    /* Location of the box */
+    left: 0;
+    top: 0;
+    width: 100%;
+    /* Full width */
+    height: 100%;
+    /* Full height */
+    overflow: auto;
+    /* Enable scroll if needed */
+    background-color: rgb(0, 0, 0);
+    /* Fallback color */
+    background-color: rgba(0, 0, 0, 0.4);
+    /* Black w/ opacity */
+}
+
+/* Modal Content */
+.modal-content {
+    position: relative;
+    background-color: #fefefe;
+    margin: auto;
+    border: 1px solid #888;
+    width: 80%;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    -webkit-animation-name: animatetop;
+    -webkit-animation-duration: 0.4s;
+    animation-name: animatetop;
+    animation-duration: 0.4s;
+    padding: 10px 15px 10px 15px;
+}
+
+/* Add Animation */
+@-webkit-keyframes animatetop {
+    from {
+        top: -300px;
+        opacity: 0
+    }
+
+    to {
+        top: 0;
+        opacity: 1
+    }
+}
+
+@keyframes animatetop {
+    from {
+        top: -300px;
+        opacity: 0
+    }
+
+    to {
+        top: 0;
+        opacity: 1
+    }
+}
+
+/* The Close Button */
+.modal-close {
+    color: black;
+    float: right;
+    font-size: 36px;
+    font-weight: bold;
+    padding: 10px;
+}
+
+.modal-close:hover,
+.modal-close:focus {
+    color: red;
+    text-decoration: none;
+    cursor: pointer;
+}
+/* End Modal */
+
+/* Tooltip */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: #1fa01f;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    top: -5px;
+    left: 110%;
+  }
+
+/* The tootltip arrow */
+.tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 100%;
+    margin-top: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent #1fa01f transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}
+
+/* Main body */
 .parallax {
     /* The image used */
     /* background-image: url("book-background0.jpg"); */
@@ -56,6 +174,29 @@ body {
     width: 100vw;
 }
 
+/* End main body */
+
+/* Auxilliary button */
+#auxbtn {
+    position: fixed;
+    top: 0;
+    right: 0;
+    color: red;
+    display: none;
+    transition: all 0.3s;
+    font-size: large;
+    background: rgba(102, 102, 102, 0);
+    /* border: 1px solid red; */
+    height: 50px;
+    width: 50px;
+}
+
+#auxbtn:hover, #auxbtn:focus {
+    background: white;
+    border: none;
+    color: black;
+}
+
 /* Topnav */
 .topnav {
     background-color: white;
@@ -66,6 +207,7 @@ body {
     display: flex;
     align-content: center;
     vertical-align: middle;
+    transition: all 0.3s;
 }
 
 .topnav a {
@@ -94,29 +236,6 @@ body {
     color: white;
 }
 
-.main-div {
-    background: rgba(102, 102, 102, 0);
-    color: white;
-    transition: 0.3s;
-    width: 50%;
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    font-family: monospace;
-    text-align: justify;
-    resize: horizontal;
-    box-sizing: border-box;
-}
-
-#editor-div {
-    overflow: hidden;
-    left: 0;
-}
-
-#output-div {
-    right: 0;
-}
-
 #settings-btn,
 #submit-btn,
 .download-btn,
@@ -142,6 +261,72 @@ body {
     font-size: 18px;
 }
 
+#write-btn,
+#read-btn,
+#balance-btn {
+    background-color: #4286f4;
+}
+
+#logo {
+    margin-left: auto;
+    background: rgba(102, 102, 102, 0);
+}
+
+#logo-img {
+    transform: translate(0, -12px);
+}
+
+#upbtn {
+    background: rgb(201, 20, 20);
+}
+
+#write-btn:hover,
+#read-btn:hover,
+#balance-btn:hover,
+#settings-btn:hover,
+#preview-btn:hover,
+#submit-btn:hover,
+#upbtn:hover {
+    background: white;
+    cursor: pointer;
+}
+
+.settings-modal {
+    font-family: monospace;
+}
+
+.setting {
+    font-family: monospace;
+    margin: 2px;
+    padding: 15px;
+}
+
+/* Topnav end */
+
+/* Main div  (editor-div + output-div) */
+.main-div {
+    background: rgba(102, 102, 102, 0);
+    color: white;
+    transition: all 0.3s;
+    width: 50%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-family: monospace;
+    text-align: justify;
+    resize: horizontal;
+    box-sizing: border-box;
+}
+
+#editor-div {
+    overflow: hidden;
+    left: 0;
+}
+
+#output-div {
+    right: 0;
+}
+
 .right-align-top {
     margin-left: auto;
     margin-right: 8px;
@@ -152,37 +337,16 @@ body {
     padding-right: 15px;
 }
 
-#write-btn,
-#read-btn,
-#balance-btn {
-    background-color: #4286f4;
-}
-
-#logo {
-    margin-left: auto;
-    background: white;
-}
-
-#logo-img {
-    transform: translate(0, -12px);
-}
-
-#settings-btn:hover,
-#preview-btn:hover,
-#submit-btn:hover,
-#write-btn:hover,
-#read-btn:hover,
-#balance-btn:hover {
-    background: white;
-}
-
 button {
     outline: none;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
 }
 
 button:hover {
-    color: #74637f;
-    background: #eee;
+    background: #74637f;
+    color: #eee;
 }
 
 .editor {
@@ -196,7 +360,7 @@ button:hover {
     resize: none;
     overflow: auto;
     font-size: 16px;
-    padding: 15px 15px 15px 15px;
+    padding: 25px;
     box-sizing: border-box;
     outline: none;
 }
@@ -248,12 +412,16 @@ button:hover {
 
 /* Create an active/current tablink class */
 .tab button.active {
-    background-color: rgb(201, 20, 20);
-    color: white;
+    /* background-color: rgb(201, 20, 20); */
+    color: black;
+    box-sizing: border-box;
+    /* border-top: 3px solid rgb(201, 20, 20); */
+    border-bottom: 3px solid rgb(201, 20, 20);
 }
 
 /* Style the tab content */
-.tabcontent1, .tabcontent2 {
+.tabcontent1,
+.tabcontent2 {
     display: none;
     padding: 6px 12px;
     border-top: none;
@@ -296,13 +464,14 @@ button:hover {
 }
 
 /* General formatting */
-.code, code {
-  padding: 5px;
-  background: lightgrey;
-  color: black;
-  font-family: monospace;
-  line-height: 1.9;
-  margin: 10px auto;
+.code,
+code {
+    padding: 5px;
+    background: lightgrey;
+    color: black;
+    font-family: monospace;
+    line-height: 1.9;
+    margin: 10px auto;
 }
 
 .highlighted {
@@ -317,12 +486,11 @@ button:hover {
     font-size: small;
 }
 
-.main-div h3 {   
+.main-div h3 {
     font-family: sans-serif;
 }
 
 /* Tools */
-
 .tool-btn {
     display: block;
     width: 80%;
