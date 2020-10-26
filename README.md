@@ -5,7 +5,8 @@ Make interactive fiction with variables, timers, conditions, music and statistic
 
 [Try it!](https://plytonrexus.github.io/if-script/).
 
-You can use Markdown to format your story. [Markdown cheat-sheet](https://www.markdownguide.org/cheat-sheet/)
+You can use Markdown to format your story. 
+_[Markdown cheat-sheet](https://www.markdownguide.org/cheat-sheet/) for reference._
 
 ### Dependencies
 [Nearley](https://github.com/kach/nearley) for parsing.
