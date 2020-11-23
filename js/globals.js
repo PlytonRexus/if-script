@@ -124,8 +124,19 @@ This is a stub. Will get to this as soon as possible!
 let helpHtml = `
 <div class="code" id="alerts-area"></div>
 
-<p class="plain-text tooltip">
-Press <span class="tooltiptext"> The top-left corner</span>&#9654; Run to run a live preview of the story.
+<p class="plain-text tooltip symlink" data-target-button="#submit-btn">
+Press <span class="tooltiptext"> Top-left or <br> <code>Ctrl + click</code> </span> &#9654; Run to start a live preview of the story.
+</p>
+
+<p class="plain-text">
+    View/Fork 
+        <a class="tooltip" href="https://github.com/PlytonRexus/if-script-core" target="_blank">
+            the core <span class="tooltiptext"> Parser + Renderer </span>
+        </a> or 
+        <a class="tooltip" href="https://github.com/PlytonRexus/if-script" target="_blank">
+            the webapp <span class="tooltiptext"> This website (editors + preview tools)</span>
+        </a>
+    on GitHub.
 </p>
 
 <p class="plain-text"> 

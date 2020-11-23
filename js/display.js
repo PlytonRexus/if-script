@@ -13,6 +13,11 @@ const localStorageKeys = {
     outputPreference: "if_r-output-preference"
 }
 
+const refs = {
+    darkScheme: "dark",
+    lightScheme: "light"
+}
+
 import {
     parseText
 } from "./parser/if-parser.js";
@@ -159,7 +164,8 @@ function useScheme(type) {
     let tabs = $All(".tab");
     let tBtn = $All(".tab button");
     let tabCon2 = $("#output-div");
-    if (type === "dark") {
+
+    if (type === refs.darkScheme) {
         editor.style.background = "rgb(50, 50, 50)";
         editor.style.color = "white";
 
@@ -172,12 +178,14 @@ function useScheme(type) {
         tabs.forEach(el => el.style.background = "rgb(50, 50, 50)");
         tBtn.forEach(el => el.style.color = "whitesmoke");
 
+        tBtnHover.forEach(el => el.style.color = "red");
+
         tabCon2.style.background = "rgb(50, 50, 50)";
 
         // tBtnHov.style.color = "black";
 
-        lwrite(localStorageKeys.schemePreference, "dark");
-    } else if (type === "light") {
+        lwrite(localStorageKeys.schemePreference, refs.darkScheme);
+    } else if (type === refs.lightScheme) {
         editor.style.background = "whitesmoke";
         editor.style.color = "rgb(40, 40, 40)";
 
@@ -192,7 +200,7 @@ function useScheme(type) {
 
         tabCon2.style.background = "rgba(102, 102, 102, 0)";
 
-        lwrite(localStorageKeys.schemePreference, "light");
+        lwrite(localStorageKeys.schemePreference, refs.lightScheme);
     }
 }
 
@@ -218,6 +226,29 @@ function useView(view) {
         $editorDiv.style.width = "50%"
 
         lwrite(viewPref, "balanced");
+    }
+}
+
+function isLeftClick(event) {
+    if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
+        return false;
+    } else if ('buttons' in event) {
+        return event.buttons === 1;
+    } else if ('which' in event) {
+        return event.which === 1;
+    } else {
+        return (event.button == 1 || event.type == 'click');
+    }
+}
+
+function handleSymlink(e) {
+    if (e.ctrlKey) {
+        let target = e.target.getAttribute("data-target-button");
+        if(IF.DEBUG)
+            console.log(target);
+        if(!!$(target)) {
+            $(target).click();
+        }
     }
 }
 
@@ -353,7 +384,7 @@ let darkBtn = createElement('button', {
     class: 'setting'
 }, { background: "rgb(50, 50, 50)", color: "white" }, {
     onclick: function(e) {
-        useScheme('dark');
+        useScheme(refs.darkScheme);
         e.target.style.display = "none";
         $("#lightbtn").style.display = "block";
     },
@@ -365,7 +396,7 @@ let lightBtn = createElement('button', {
     class: 'setting'
 }, null, {
     onclick: function(e) {
-        useScheme('light');
+        useScheme(refs.lightScheme);
         e.target.style.display = "none";
         $("#darkbtn").style.display = "block";
     },
@@ -778,6 +809,8 @@ $All(".highlighted").forEach(ele => w3CodeColor(ele));
 /* Colour scheme preferences */
 if (lread(localStorageKeys.schemePreference))
     useScheme(lread(localStorageKeys.schemePreference));
+else
+    useScheme(refs.darkScheme);
 /* Menubar preferences */
 if(lread(localStorageKeys.modePreference))
     useMode(lread(localStorageKeys.modePreference));
@@ -812,6 +845,8 @@ window.onkeyup = function (e) {
         idx = down.findIndex(val => val === e.key);
     down.splice(idx, 1);
 }
+
+$All(".symlink").forEach(el => el.addEventListener("click", handleSymlink));
 
 ///////////////////////////////////
 //                               //  
