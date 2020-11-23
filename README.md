@@ -3,7 +3,7 @@ An extremely simple syntax for writing interactive fiction that can be embedded 
 
 Make interactive fiction with variables, timers, conditions, music and statistics. The story is parsed into plain HTML, CSS and JavaScript.
 
-[Try it!](https://plytonrexus.github.io/if-script/).
+[Try it!](https://plytonrexus.github.io/if-script/)
 
 You can use Markdown to format your story. 
 _[Markdown cheat-sheet](https://www.markdownguide.org/cheat-sheet/) for reference._
