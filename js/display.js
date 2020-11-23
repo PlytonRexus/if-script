@@ -810,7 +810,7 @@ $All(".highlighted").forEach(ele => w3CodeColor(ele));
 if (lread(localStorageKeys.schemePreference))
     useScheme(lread(localStorageKeys.schemePreference));
 else
-    useScheme(refs.darkScheme);
+    useScheme(refs.lightScheme);
 /* Menubar preferences */
 if(lread(localStorageKeys.modePreference))
     useMode(lread(localStorageKeys.modePreference));
