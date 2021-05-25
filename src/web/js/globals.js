@@ -1,32 +1,12 @@
-var ua = window.navigator.userAgent.toLowerCase();
-var isIE = !!ua.match(/msie|trident\/7|edge/);
+const ua = window.navigator.userAgent.toLowerCase()
+const isIE = !!ua.match(/msie|trident\/7|edge/)
 
-let IF = {};
-IF.story = {};
-IF.grammar = {};
-IF.state = {};
-IF.DEBUG = true;
+const clickEvent = new Event('click')
 
-class IFError {
-    constructor(str = "", code, dontLogInstantly) {
-        this.message = str;
-        this.expectedLine = this.message.split("\n")[2];
-        this.code = code || null;
-        if (!dontLogInstantly) this.log();
-    }
+const tracking = [{ 0: 's', 1: 'Control' }]
+const down = []
 
-    log() {
-        console.log("Error at:\n", this.expectedLine);
-    };
-}
-
-let clickEvent = new Event('click');
-
-let tracking = [{"0": "s", "1": "Control"}];
-let down = [];
-
-let instructions =
-    `/*---------- Tutorial Story ----------*/
+const instructions = `/*---------- Tutorial Story ----------*/
 
 settings>
 
@@ -47,31 +27,31 @@ settings>
 /*------------------------------------------*/
 /*------------------------------------------*/
 
-scene> 
-  @first 3 
+scene>
+  @first 3
   @music https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3
-  @sections 3 
-  @name first scene 
+  @sections 3
+  @name first scene
 <scene
 
 scene>
   @first 2
   @music https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3
-  @sections 2 
-@name second scene 
+  @sections 2
+@name second scene
 <scene
 
 scene>
   @first 1
   @music https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3
-  @sections 1 
-  @name third scene 
+  @sections 1
+  @name third scene
 <scene
 
 /*------------------------------------------*/
 /*------------------------------------------*/
 
-ss> 
+ss>
 
 secset>
     @timer 5000 [[3]]
@@ -114,14 +94,14 @@ ch> Start the first scene \${__new=ten} [[scene:1]] <ch
 <ss
 
 /*------------------------------------------*/
-/*------------------------------------------*/`;
+/*------------------------------------------*/`
 
-let statsInstructions = `
+const statsInstructions = `
 /*
 This is a stub. Will get to this as soon as possible!
-*/`;
+*/`
 
-let helpHtml = `
+const helpHtml = `
 <div class="code" id="alerts-area"></div>
 
 <p class="plain-text tooltip symlink" data-target-button="#submit-btn">
@@ -129,36 +109,36 @@ Press <span class="tooltiptext"> Top-left or <br> <code>Ctrl + click</code> </sp
 </p>
 
 <p class="plain-text">
-    View/Fork 
+    View/Fork
         <a class="tooltip" href="https://github.com/PlytonRexus/if-script-core" target="_blank">
             the core <span class="tooltiptext"> Parser + Renderer </span>
-        </a> or 
+        </a> or
         <a class="tooltip" href="https://github.com/PlytonRexus/if-script" target="_blank">
             the webapp <span class="tooltiptext"> This website (editors + preview tools)</span>
         </a>
     on GitHub.
 </p>
 
-<p class="plain-text"> 
+<p class="plain-text">
 You can use Markdown to format your story.
 <a href="https://www.markdownguide.org/cheat-sheet/" target="_blank" rel="noreferrer noopener"> Markdown cheat-sheet </a>
 </p>
 
 <h3 id="embed-scripts"><a href="#embed-scripts">Embedding</a></h3>
 <p class="plain-text">Within the head tag, add the following.</p>
-<div class="highlighted">   
+<div class="highlighted">
     &lt;link rel=&quot;stylesheet&quot; href=&quot;https://cdn.jsdelivr.net/gh/plytonrexus/if-script@v0.4-alpha/downloadable/if_r.css&quot;&gt;
 </div>
 
 <p class="plain-text">In your body, add the following scripts.</p>
 <div class="highlighted">
     &lt;div id=&quot;if_r-output-area&quot;&gt;&lt;/div&gt;
-    <br/> 
+    <br/>
     &lt;script src=&quot;Story.js&quot;&gt;&lt;/script&gt;
-    <br/>    
+    <br/>
     &lt;script src=&quot;https://cdn.jsdelivr.net/gh/plytonrexus/if-script@v0.4-alpha/js/if_r-terp.js&quot;&gt;&lt;/script&gt;
-    <br/>    
-    &lt;script src=&quot;https://cdn.jsdelivr.net/npm/showdown@1.9.1/dist/showdown.min.js&quot;&gt;&lt;/script&gt;    
+    <br/>
+    &lt;script src=&quot;https://cdn.jsdelivr.net/npm/showdown@1.9.1/dist/showdown.min.js&quot;&gt;&lt;/script&gt;
     <br/>
     &lt;script&gt;
         IF.methods.loadStory(IF.story);
@@ -186,7 +166,7 @@ comment
 <h3 id="variable-syntax"><a href="#variable-syntax">Variables</a></h3>
 <p class="plain-text">
 Variables truly create dynamic stories.
-You can use variables to store a lot of things like character names, 
+You can use variables to store a lot of things like character names,
 inventory items, visited scenes, number of things and many others.
 You can then display the values of these variables anywhere like so:
 </p>
@@ -198,8 +178,8 @@ Your name is \${name}.
 <p class="plain-text">
 Obviously, here, variable <code>name</code> was used to store the name of a character.
 <br/>
-The variables can also be used in conditional logic to determine which <a href="#choice-syntax">choices</a> 
-and (in a future release) what paragraphs of a <a href="#section-syntax">section's</a> 
+The variables can also be used in conditional logic to determine which <a href="#choice-syntax">choices</a>
+and (in a future release) what paragraphs of a <a href="#section-syntax">section's</a>
 text should be visible to the reader.
 You can find more about this under the <a href="#choice-syntax">choices</a> heading.
 <br/>
@@ -234,7 +214,7 @@ settings&gt;
 <br/>
 &nbsp;&nbsp;@referrable <true/false>
 <br/>
-&nbsp;&nbsp;@fullTimer 
+&nbsp;&nbsp;@fullTimer
 <br/>
 &lt;settings
 </div>
@@ -258,7 +238,7 @@ Scenes are collections of <a href="#scene-syntax">sections</a>
 
 <h3 id="section-syntax"><a href="#section-syntax">Sections</a></h3>
 <p class="plain-text">
-    Sections are independent locations/situations in a story. 
+    Sections are independent locations/situations in a story.
     These can be reached through <a href="#choice-syntax">choices</a>.
     Each section can have its own set of settings that allow it to have separate timers
     that send the reader to a separate section if they do not choose within specified time,
@@ -275,7 +255,7 @@ Scenes are collections of <a href="#scene-syntax">sections</a>
     <br/>
     &nbsp;&nbsp;You can use variables here.
     <br/>
-    &nbsp;&nbsp;/* 
+    &nbsp;&nbsp;/*
     <br/>
     &nbsp;&nbsp;&nbsp;&nbsp;You can write choices about now.
     <br/>
@@ -325,7 +305,7 @@ Choices can assign variables.
 
 <p class="plain-text">
 Choices can also have input boxes. These input boxes can be used to
-take in custom values from the user and then stored in variables for 
+take in custom values from the user and then stored in variables for
 later use.
 </p>
 
@@ -353,7 +333,7 @@ Available operators are:
 <div class="code">
     ch&gt;
     <br/>
-    &nbsp;&nbsp;\${__if name == "" || namePower <= 0} 
+    &nbsp;&nbsp;\${__if name == "" || namePower <= 0}
     <br/>
     &nbsp;&nbsp;&nbsp;&nbsp;Type in your name here __input \${__name} [[5]]
     <br/>
@@ -377,16 +357,28 @@ In each of these, the first variable is assigned values that result from the ope
 <div class="code">
     ch&gt;
     <br/>
-    &nbsp;&nbsp;The power of your name goes up 10 units and your health 
+    &nbsp;&nbsp;The power of your name goes up 10 units and your health
     is multiplied \${namePower} times.
     <br/>
     &nbsp;&nbsp;\${__namePower + 10} \${__health * namePower} [[5]]
     <br/>
     &lt;ch
 </div>
-`;
+`
 
-let settingsHtml = `
+const settingsHtml = `
 <div class='settings-modal'>
     <h2>Settings</h2>
-</div>`;
+</div>`
+
+export {
+  ua,
+  isIE,
+  clickEvent,
+  tracking,
+  down,
+  instructions,
+  statsInstructions,
+  helpHtml,
+  settingsHtml
+}

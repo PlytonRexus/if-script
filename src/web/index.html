@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="eng-in">
 
 <head>
 	<title>IF</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta content="width=device-width, initial-scale=1.0" name="viewport">
 	<link rel="shortcut icon" href="assets/images/if-logo.png" type="image/x-icon">
 	<link rel="stylesheet" href="css/index.css">
 	<link rel="stylesheet" href="downloadable/if_r.css">
@@ -21,7 +21,7 @@
 	<script src="js/globals.js"></script>
 	<script src="js/if_r-terp.js"></script>
 	<script type="text/javascript" src="js/lib/w3-highlighter.js"></script>
-	<script type="module" src="js/display.js"></script>
+	<script type="module" src="js/index.js"></script>
 	<script src="js/lib/nearley.js"></script>
 	<script src="js/parser/section.grammar.js"></script>
 	<script src="js/parser/scene.grammar.js"></script>
@@ -29,7 +29,7 @@
 
     <script>
         ;(function () {
-		    var src = '//cdn.jsdelivr.net/npm/eruda';
+		    let src = '//cdn.jsdelivr.net/npm/eruda';
 		    if (!/eruda=true/.test(window.location) && localStorage.getItem('active-eruda') != 'true') return;
 		    document.write('<scr' + 'ipt src="' + src + '"></scr' + 'ipt>');
 		    document.write('<scr' + 'ipt>eruda.init();</scr' + 'ipt>');

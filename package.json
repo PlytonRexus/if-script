@@ -1,0 +1,66 @@
+{
+  "name": "if-script",
+  "version": "0.2.1",
+  "description": "An extremely simple syntax for writing interactive fiction that can be embedded in any website.",
+  "main": "index.js",
+  "scripts": {
+    "test": "standard",
+    "serve": "serve -s dist -l 3001",
+    "compile": "npm run compile:section npm run compile:scene && npm run compile:settings",
+    "compile:section": "nearleyc src/grammar/section.ne -o dist/grammar/section.grammar.js",
+    "compile:scene": "nearleyc src/grammar/scene.ne -o dist/grammar/scene.grammar.js",
+    "compile:settings": "nearleyc src/grammar/settings.ne -o dist/grammar/settings.grammar.js",
+    "build": "cross-env NODE_ENV=production webpack --config config/webpack.prod.js",
+    "start": "cross-env NODE_ENV=development webpack serve --config config/webpack.dev.js",
+    "fix": "standard --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PlytonRexus/if-script.git"
+  },
+  "keywords": [
+    "syntax",
+    "embedded",
+    "interactive-fiction",
+    "text-adventure-game",
+    "scenes",
+    "timers",
+    "choice-syntax"
+  ],
+  "author": "Mihir Jichkar (PlytonRexus)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/PlytonRexus/if-script/issues"
+  },
+  "homepage": "https://github.com/PlytonRexus/if-script#readme",
+  "dependencies": {
+    "showdown": "^1.9.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.14.3",
+    "@babel/plugin-proposal-class-properties": "^7.13.0",
+    "@babel/preset-env": "^7.14.2",
+    "babel-loader": "^8.2.2",
+    "clean-webpack-plugin": "^4.0.0-alpha.0",
+    "cross-env": "^7.0.3",
+    "css-loader": "^5.2.6",
+    "css-minimizer-webpack-plugin": "^3.0.0",
+    "html-webpack-plugin": "^5.3.1",
+    "mini-css-extract-plugin": "^1.6.0",
+    "nearley": "^2.20.1",
+    "prettier-config-standard": "^4.0.0",
+    "serve": "^11.3.2",
+    "standard": "^16.0.3",
+    "style-loader": "^2.0.0",
+    "webpack": "^5.37.1",
+    "webpack-cli": "^4.7.0",
+    "webpack-dev-server": "^3.11.2"
+  },
+  "standard": {
+    "ignore": [
+      "src/web/assets/**",
+      "src/web/js/lib/**",
+      "dist/**"
+    ]
+  }
+}
