@@ -1,0 +1,12 @@
+/**
+ * IF-Script  v<%= app.version %>
+ * ==============
+ *
+ * Built: <%= grunt.template.today('yyyy-mm-dd') %>
+ *
+ * Copyright (c) <%= grunt.template.today('yyyy') %> The IF-Script Contributors
+ * Authors: <%= app.author %>
+ *
+ * MIT Licensed
+ * https://github.com/PlytonRexus/if-script.git
+ */
