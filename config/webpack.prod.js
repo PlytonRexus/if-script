@@ -1,6 +1,7 @@
 const fs = require('fs')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin')
+const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 const { merge } = require('webpack-merge')
 const webpack = require('webpack')
 
@@ -13,23 +14,21 @@ module.exports = merge(base, {
   output: {
     path: paths.build,
     publicPath: '/',
-    filename: 'scripts/[name].[contenthash].bundle.js',
+    filename: 'scripts/[name].[contenthash].bundle.js'
   },
   module: {
     rules: [
       {
         test: /\.(scss|css)$/,
-        use: [
-          MiniCssExtractPlugin.loader, 'css-loader'
-        ],
-      },
-    ],
+        use: [MiniCssExtractPlugin.loader, 'css-loader']
+      }
+    ]
   },
   plugins: [
     // Extracts CSS into separate files
     new MiniCssExtractPlugin({
       filename: 'styles/[name].[contenthash].css',
-      chunkFilename: 'styles/[id].css',
+      chunkFilename: 'styles/[id].css'
     }),
     new webpack.BannerPlugin({
       banner: `
@@ -51,12 +50,12 @@ module.exports = merge(base, {
     minimize: true,
     minimizer: [new CssMinimizerPlugin(), '...'],
     runtimeChunk: {
-      name: 'runtime',
-    },
+      name: 'runtime'
+    }
   },
   performance: {
     hints: false,
     maxEntrypointSize: 512000,
-    maxAssetSize: 512000,
-  },
+    maxAssetSize: 512000
+  }
 })
