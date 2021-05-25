@@ -12,7 +12,8 @@
     "compile:settings": "nearleyc src/grammar/settings.ne -o dist/grammar/settings.grammar.js",
     "build": "cross-env NODE_ENV=production webpack --config config/webpack.prod.js",
     "start": "cross-env NODE_ENV=development webpack serve --config config/webpack.dev.js",
-    "fix": "standard --fix"
+    "fix": "standard --fix",
+    "deploy": "git subtree push --prefix dist origin gh-pages"
   },
   "repository": {
     "type": "git",
