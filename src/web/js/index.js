@@ -20,6 +20,8 @@ const $ = document.querySelector.bind(document)
 const $All = document.querySelectorAll.bind(document)
 const root = $('#root')
 
+console.log('Serving on: ' + __webpack_public_path__)
+
 const localStorageKeys = {
   storyText: 'if_r-story-text',
   statsText: 'if_r-story-stats',
