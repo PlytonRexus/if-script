@@ -9,7 +9,7 @@ module.exports = {
     preview: path.resolve(__dirname, '../src/web/preview/index.js')
   },
   output: {
-    path: path.resolve(__dirname, '../dist'),
+    path: paths.build,
     filename: 'scripts/[name].bundle.js',
     publicPath: '/'
   },
