@@ -9,6 +9,8 @@ import {
 
 import w3CodeColor from '../../lib/w3Highlighter'
 
+import logo from '../../assets/images/if-logo-nobg.png'
+
 import('../css/index.css')
 
 import IF from '../../interpreter/if_r-terp'
@@ -552,13 +554,18 @@ const logoBtn = createElement(
   {
     id: 'logo',
     class: 'topnav-btn',
-    href: '/',
+    href: __webpack_public_path__ || '/',
     title: 'IF-Script logo; Reload this page'
   },
   null,
   null,
   [
-    createElement('img', { src: '/if-logo-nobg.png', id: 'logo-img' }, { height: '50px', width: '50px' })
+    (function () {
+      let img =
+        createElement('img', { src: logo, id: 'logo-img' }, { height: '50px', width: '50px' })
+      img.src = logo
+      return img
+    })()
   ]
 )
 

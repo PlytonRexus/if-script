@@ -14,7 +14,7 @@
     "build:gh": "cross-env NODE_ENV=production webpack --config config/webpack.gh.js",
     "start": "cross-env NODE_ENV=development webpack serve --config config/webpack.dev.js",
     "fix": "standard --fix",
-    "deploy": "npm run build:gh && git add . && git commit -m \"deploy commit\" && git subtree push --prefix dist origin gh-pages"
+    "deploy": "npm run build:gh && git add dist/** && git commit -m \"deploy commit\" && git subtree push --prefix dist origin gh-pages"
   },
   "repository": {
     "type": "git",

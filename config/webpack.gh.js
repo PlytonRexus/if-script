@@ -13,7 +13,7 @@ module.exports = merge(base, {
   devtool: false,
   output: {
     path: paths.build,
-    publicPath: '/if-script',
+    publicPath: '/if-script/',
     filename: 'scripts/[name].[contenthash].bundle.js'
   },
   module: {
