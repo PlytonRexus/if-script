@@ -1,6 +1,6 @@
 {
   "name": "if-script",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "An extremely simple syntax for writing interactive fiction that can be embedded in any website.",
   "main": "index.js",
   "scripts": {
@@ -36,7 +36,7 @@
   },
   "homepage": "https://github.com/PlytonRexus/if-script#readme",
   "dependencies": {
-    "showdown": "^1.9.1"
+    "if-script-core": "^0.2.6"
   },
   "devDependencies": {
     "@babel/core": "^7.14.3",
@@ -49,7 +49,6 @@
     "css-minimizer-webpack-plugin": "^3.0.0",
     "html-webpack-plugin": "^5.3.1",
     "mini-css-extract-plugin": "^1.6.0",
-    "nearley": "^2.20.1",
     "prettier-config-standard": "^4.0.0",
     "serve": "^11.3.2",
     "standard": "^16.0.3",
