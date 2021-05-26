@@ -1,3 +1,4 @@
+import { parser, interpreter as IF } from 'if-script-core'
 import {
   clickEvent,
   down,
@@ -6,15 +7,11 @@ import {
   statsInstructions,
   tracking
 } from './globals'
-
 import w3CodeColor from '../../lib/w3Highlighter'
-
 import logo from '../../assets/images/if-logo-nobg.png'
-
 import('../css/index.css')
 
-import IF from '../../interpreter/if_r-terp'
-import {parseText} from '../../parser/if-parser'
+const { parseText } = parser
 
 const $ = document.querySelector.bind(document)
 const $All = document.querySelectorAll.bind(document)
