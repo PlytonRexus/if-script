@@ -467,8 +467,8 @@ button:hover {
 }
 
 /* General formatting */
-.code,
-code {
+.code:not(#if_r-output-area),
+code:not(#if_r-output-area) {
   padding: 5px;
   background: lightgrey;
   color: black;

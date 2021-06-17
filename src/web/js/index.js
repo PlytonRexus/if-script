@@ -1,17 +1,14 @@
-import { parser, interpreter as IF } from 'if-script-core'
-import {
-  clickEvent,
-  down,
-  helpHtml,
-  instructions,
-  statsInstructions,
-  tracking
-} from './globals'
+import IFScript from 'if-script-core/src/IFScript.mjs'
+import { clickEvent, down, helpHtml, statsInstructions, tracking } from './globals'
 import w3CodeColor from '../../lib/w3Highlighter'
 import logo from '../../assets/images/if-logo-nobg.png'
-import('../css/index.css')
+import instructions from 'if-script-core/test/examples/introduction.js'
+import '../css/index.css'
 
-const { parseText } = parser
+const IF = new IFScript(IFScript.versions().STREAM)
+IF.start()
+const parseText = IF.parser.parseText
+const interpreter = new IF.interpreter()
 
 const $ = document.querySelector.bind(document)
 const $All = document.querySelectorAll.bind(document)
@@ -41,7 +38,7 @@ const refs = {
 //                               //
 /// ////////////////////////////////
 
-function fetchFile(addr, site) {
+function fetchFile (addr, site) {
   fetch(addr)
     .then((response) => {
       if (!response.ok) {
@@ -55,25 +52,25 @@ function fetchFile(addr, site) {
     .catch((err) => console.log('Some fetch error occured.'))
 }
 
-function lread(key = localStorageKeys.storyText) {
+function lread (key = localStorageKeys.storyText) {
   return localStorage.getItem(key)
 }
 
-function lwrite(key = localStorageKeys.storyText, value = instructions) {
+function lwrite (key = localStorageKeys.storyText, value = instructions) {
   return localStorage.setItem(key, value)
 }
 
-function showAlert(text) {
+function showAlert (text) {
   const alertArea = $('#alerts-area')
   alertArea.style.display = 'block'
   alertArea.innerHTML = text
 }
 
-function insertAtCursor(field, value) {
+function insertAtCursor (field, value) {
   // For textarea editor
   if (document.selection) {
     field.focus()
-    sel = document.selection.createRange()
+    let sel = document.selection.createRange()
     sel.text = value
   } else if (field.selectionStart || field.selectionStart == '0') {
     const startPos = field.selectionStart
@@ -89,7 +86,7 @@ function insertAtCursor(field, value) {
   }
 }
 
-function insertTextAtCaret(text) {
+function insertTextAtCaret (text) {
   // For editablecontent elements
   let sel, range
   if (window.getSelection) {
@@ -104,7 +101,7 @@ function insertTextAtCaret(text) {
   }
 }
 
-function formatDoc(cmd, value) {
+function formatDoc (cmd, value) {
   // For editablecontent elements
   if ($('#if_r-input-area').style.display !== 'none') {
     document.execCommand(cmd, false, value)
@@ -112,7 +109,7 @@ function formatDoc(cmd, value) {
   }
 }
 
-function showModal(html, attrs, styles, ...nodes) {
+function showModal (html, attrs, styles, ...nodes) {
   // todo: implement unclosabillity
   const modal = $('#modal')
   modal.style.display = 'block'
@@ -129,7 +126,7 @@ function showModal(html, attrs, styles, ...nodes) {
   Object.keys(styles).forEach((sty) => (content.style[sty] = styles[sty]))
 
   window.onclick = function (event) {
-    if (event.target == modal) {
+    if (event.target === modal) {
       modal.style.display = 'none'
     }
   }
@@ -139,12 +136,12 @@ function showModal(html, attrs, styles, ...nodes) {
   }
 }
 
-function closeModal(node) {
+function closeModal (node) {
   if (node) return (node.style.display = 'none')
   $('#modal').style.display = 'none'
 }
 
-function useMode(mode) {
+function useMode (mode) {
   const modePref = localStorageKeys.modePreference
 
   if (mode === 'compact') {
@@ -172,7 +169,7 @@ function useMode(mode) {
   }
 }
 
-function useScheme(type) {
+function useScheme (type) {
   const editor = $('#if_r-input-area')
   const statsEditor = $('#if_r-stats-editor')
   const top = $('.topnav')
@@ -219,7 +216,7 @@ function useScheme(type) {
   }
 }
 
-function useView(view) {
+function useView (view) {
   const $outputDiv = $('#output-div')
   const $editorDiv = $('#editor-div')
   const viewPref = localStorageKeys.viewPreference
@@ -244,7 +241,7 @@ function useView(view) {
   }
 }
 
-function isLeftClick(event) {
+function isLeftClick (event) {
   if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
     return false
   } else if ('buttons' in event) {
@@ -252,11 +249,11 @@ function isLeftClick(event) {
   } else if ('which' in event) {
     return event.which === 1
   } else {
-    return event.button == 1 || event.type == 'click'
+    return event.button === 1 || event.type === 'click'
   }
 }
 
-function handleSymlink(e) {
+function handleSymlink (e) {
   if (e.ctrlKey) {
     const target = e.target.getAttribute('data-target-button')
     if (IF.DEBUG) {
@@ -285,7 +282,7 @@ function handleSymlink(e) {
  * @param {array} children Child nodes of the element
  * @returns {Node} element
  */
-function createElement(name, attrs, styles, listeners, children) {
+function createElement (name, attrs, styles, listeners, children) {
   const ele = document.createElement(name)
   if (attrs) {
     Object.keys(attrs).forEach((attr) => {
@@ -356,7 +353,7 @@ const storyBtn = createElement(
   null,
   {
     onclick: function () {
-      if (!IF.story || Object.keys(IF.story).length <= 0) {
+      if (!interpreter.run.story || Object.keys(interpreter.run.story).length <= 0) {
         return console.log('Parse a story at least once.')
       }
       const data = new Blob([`const IF = ${JSON.stringify(IF)}`], {
@@ -411,8 +408,8 @@ const previewBtn = createElement(
   null,
   {
     onclick: function () {
-      if (Object.keys(IF.story).length <= 0)
-        return showAlert("You haven't run a story yet.")
+      if (Object.keys(interpreter.run.story).length <= 0)
+        return showAlert('You haven\'t run a story yet.')
       else {
         window.open('preview')
       }
@@ -607,7 +604,7 @@ const statsEditor = createElement('textarea', {
   class: 'editor'
 })
 
-function openCity1(evt, target) {
+function openCity1 (evt, target) {
   let i, tabcontent, tablinks
   tabcontent = document.getElementsByClassName('tabcontent1')
   for (i = 0; i < tabcontent.length; i++) {
@@ -710,7 +707,7 @@ const statcon = createElement(
 //                               //
 /// ////////////////////////////////
 /* div2 */
-function openCity2(evt, target) {
+function openCity2 (evt, target) {
   let i, tabcontent, tablinks
   tabcontent = document.getElementsByClassName('tabcontent2')
   for (i = 0; i < tabcontent.length; i++) {
@@ -932,7 +929,7 @@ const instructDiv = createElement(
     'text-align': 'center'
   },
   {
-    innerHTML: "<p class='plain-text'>Click Run to start playing!</p>"
+    innerHTML: '<p class=\'plain-text\'>Click Run to start playing!</p>'
   }
 )
 
@@ -1071,8 +1068,8 @@ $All('.symlink').forEach((el) => el.addEventListener('click', handleSymlink))
 /* Autosave implementation */
 let editor_timeout, stats_timeout
 
-function saveStory(text) {
-  const story_title = IF.story.variables ? IF.state.variables.title : null
+function saveStory (text) {
+  const story_title = interpreter.run.story.name ? interpreter.run.state.name : null
   lwrite(localStorageKeys.storyText, text)
   document.title = 'Story Saved.'
   setTimeout(() => {
@@ -1080,8 +1077,8 @@ function saveStory(text) {
   }, 1500)
 }
 
-function saveStats(text) {
-  const story_title = IF.story.variables ? IF.story.variables.title : null
+function saveStats (text) {
+  const story_title = interpreter.run.story.name ? interpreter.run.story.name : null
   lwrite(localStorageKeys.statsText, text)
   document.title = 'Stats Saved.'
   setTimeout(() => {
@@ -1111,7 +1108,7 @@ $('#if_r-stats-editor').addEventListener('keyup', function (e) {
 //                               //
 /// ////////////////////////////////
 /* Parsing */
-function runSubmit() {
+function runSubmit () {
   const storyValue = $('#if_r-input-area').value
   const statsValue = $('#if_r-stats-editor').value
 
@@ -1123,9 +1120,9 @@ function runSubmit() {
   lwrite(localStorageKeys.storyText, storyValue)
   lwrite(localStorageKeys.statsText, statsValue)
 
-  IF.story = parseText(storyValue)
+  const story = parseText(storyValue)
 
-  lwrite(localStorageKeys.objectStorage, JSON.stringify(IF))
+  lwrite(localStorageKeys.objectStorage, JSON.stringify(story))
 
-  IF.methods.loadStory(IF.story)
+  interpreter.loadStory(story, null, 'default')
 }

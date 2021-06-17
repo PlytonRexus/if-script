@@ -36,7 +36,7 @@
   },
   "homepage": "https://github.com/PlytonRexus/if-script#readme",
   "dependencies": {
-    "if-script-core": "^0.2.6"
+    "if-script-core": "^0.5.7"
   },
   "devDependencies": {
     "@babel/core": "^7.14.3",
