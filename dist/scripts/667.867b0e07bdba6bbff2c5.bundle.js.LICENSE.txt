@@ -3,9 +3,9 @@
  *       IF-Script  v0.2.1
  *       ==============
  *
- *       Built: Wed May 26 2021
+ *       Built: Thu Jun 17 2021
  *
- *       Copyright (c) 2021 IF-Script Contributors
+ *       Copyright (c) 2021 The IF-Script Contributors
  *       Author(s): Mihir Jichkar
  *
  *       MIT Licensed
