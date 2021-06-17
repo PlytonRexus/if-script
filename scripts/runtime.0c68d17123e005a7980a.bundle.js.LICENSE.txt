@@ -5,7 +5,7 @@
  *
  *       Built: Thu Jun 17 2021
  *
- *       Copyright (c) 2021 The IF-Script Contributors
+ *       Copyright (c) 2021 IF-Script Contributors
  *       Author(s): Mihir Jichkar
  *
  *       MIT Licensed
@@ -13,5 +13,3 @@
  *
  *
  */
-
-/*! showdown v 1.9.1 - 02-11-2019 */
