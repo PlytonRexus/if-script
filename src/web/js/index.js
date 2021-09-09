@@ -6,7 +6,6 @@ import instructions from 'if-script-core/test/examples/introduction.js'
 import '../css/index.css'
 
 const IF = new IFScript(IFScript.versions().STREAM)
-IF.start()
 const parseText = IF.parser.parseText
 const interpreter = new IF.interpreter()
 
@@ -87,7 +86,7 @@ function insertAtCursor (field, value) {
 }
 
 function insertTextAtCaret (text) {
-  // For editablecontent elements
+  // For editable content elements
   let sel, range
   if (window.getSelection) {
     sel = window.getSelection()
@@ -102,7 +101,7 @@ function insertTextAtCaret (text) {
 }
 
 function formatDoc (cmd, value) {
-  // For editablecontent elements
+  // For editable content elements
   if ($('#if_r-input-area').style.display !== 'none') {
     document.execCommand(cmd, false, value)
     $('#if_r-input-area').focus()
@@ -354,9 +353,9 @@ const storyBtn = createElement(
   {
     onclick: function () {
       if (!interpreter.run.story || Object.keys(interpreter.run.story).length <= 0) {
-        return console.log('Parse a story at least once.')
+        return showAlert('Parse a story at least once.')
       }
-      const data = new Blob([`const IF = ${JSON.stringify(IF)}`], {
+      const data = new Blob([`const IF = ${JSON.stringify(interpreter.run.story)}`], {
         type: 'text/javascript'
       })
       storyBtn.setAttribute('href', window.URL.createObjectURL(data))
@@ -832,19 +831,17 @@ const insertSectionBtn = createElement(
     innerHTML: 'Add Section',
     onclick: function (event) {
       const sectionText = `
-ss>
-  secset>
-    @timer 10000
-    @music link
-  <secset
-
-  tt> Untitled Section <tt
-
-  Content
-
-  ch> A choice [[1]] <ch
-  ch> Another choice [[2]] <ch
-<ss`
+section__
+  "Ah, ha! A new section."
+    choice__
+      @target 2
+      "The first path"
+    __choice
+    choice__
+      @target 3
+      "The next path"
+    __choice
+__section`
       insertAtCursor($('#if_r-input-area'), sectionText)
       // formatDoc('bold');
     }
@@ -861,12 +858,12 @@ const insertSceneBtn = createElement(
     innerHTML: 'Add Scene',
     onclick: function (event) {
       const sceneText = `
-scene>
-  @first section_number
-  @music link
-  @sections space_seperated_section_numbers
-  @name custom_name_for_scene
-<scene`
+scene__
+  @first 1
+  @music "https://google.com"
+  @sections 1 2 3
+  @name "The climax"
+__scene`
       insertAtCursor($('#if_r-input-area'), sceneText)
     }
   }
@@ -882,7 +879,11 @@ const insertChoiceBtn = createElement(
     innerHTML: 'Add Choice',
     onclick: function (event) {
       const choiceText = `
-ch> \${__if name == "" || namePower <= 0} Type in your name here __input \${__name} [[5]] <ch`
+  choice__
+    @input heroName
+    @target 5
+    Type in your name here
+  __choice`
       insertAtCursor($('#if_r-input-area'), choiceText)
     }
   }

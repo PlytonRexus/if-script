@@ -1,5 +1,6 @@
 class IFError extends Error {
   constructor (str = '', code, dontLogInstantly) {
+    super()
     this.message = str
     this.expectedLine = this.message.split('\n')[2]
     this.code = code || null
