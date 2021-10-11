@@ -467,7 +467,7 @@ button:hover {
 }
 
 /* General formatting */
-.code:not(#if_r-output-area),
+/*.code:not(#if_r-output-area),
 code:not(#if_r-output-area) {
   padding: 5px;
   background: lightgrey;
@@ -475,7 +475,7 @@ code:not(#if_r-output-area) {
   font-family: monospace;
   line-height: 1.9;
   margin: 10px auto;
-}
+}*/
 
 .highlighted {
   background: lightgrey;

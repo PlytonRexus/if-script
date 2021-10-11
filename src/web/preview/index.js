@@ -9,7 +9,26 @@ ifscript.init()
 
 	let storyObj = localStorage.getItem('if_r-if-object')
 	const story = Story.fromJson(storyObj)
-	interpreter.loadStory(story, null, 'bricks')
+
+	let theme = {
+		name: 'choicescript-sepia'
+	}
+
+	function useTheme(themeName) {
+		theme.name = themeName
+
+		if (!theme.name) {
+			theme.name = 'choicescript-sepia'
+		}
+	}
+
+	if (typeof window !== 'undefined' && !!window && !!window.location) {
+		let url = new URL(window.location.href)
+		let themeName = url.searchParams.get("theme")
+		if (!!themeName) useTheme(themeName)
+	}
+
+	interpreter.loadStory(story, null, theme.name)
 	document.title = interpreter.run.story.name ?? 'IF | Preview'
 })
 .catch(err => console.log(err))
