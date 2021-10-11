@@ -1,0 +1,15 @@
+/*!
+ * 
+ *       IF-Script  v0.2.1
+ *       ==============
+ *
+ *       Built: Mon Oct 11 2021
+ *
+ *       Copyright (c) 2021 IF-Script Contributors
+ *       Author(s): Mihir Jichkar
+ *
+ *       MIT Licensed
+ *       https://github.com/PlytonRexus/if-script.git
+ *
+ *
+ */

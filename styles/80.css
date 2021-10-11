@@ -1,0 +1,15 @@
+/*!
+ * 
+ *       IF-Script  v0.2.1
+ *       ==============
+ *
+ *       Built: Mon Oct 11 2021
+ *
+ *       Copyright (c) 2021 IF-Script Contributors
+ *       Author(s): Mihir Jichkar
+ *
+ *       MIT Licensed
+ *       https://github.com/PlytonRexus/if-script.git
+ *
+ *
+ */#if_r-output-area{background:#eaf8f3;display:flex;flex-direction:column;flex-shrink:3;flex-wrap:wrap;font-family:Roboto-Regular,serif;justify-content:center;margin:10px auto;max-width:80vw;overflow:auto;padding:20px;white-space:pre-wrap;width:auto}#if_r-output-area a{border-bottom:none;color:#c91414!important}.if_r-section{padding:10px 0}.if_r-section-choices-list{list-style:none;margin-left:20px}.if_r-section-choice{border:2px solid #708090;border-radius:10px;color:#000;cursor:pointer;max-width:60%;min-height:23px;padding:10px;text-decoration:none;width:auto}.if_r-section-choice>p{margin:0}.if_r-section-choice:hover{background:#ff0;cursor:pointer;padding:10px;text-decoration:none}.if_r-section-choice-li{padding-left:0}.if_r-stats-bar{word-wrap:normal;background:#fff;color:#282828;height:40px;margin:10px 0;padding:10px;width:100%}#if_r-status-bar{background-color:#d3d3d3;color:#000;display:flex;flex-shrink:10;font-family:monospace;height:auto;width:100%}#if_r-alerts-area{overflow-x:auto;overflow-y:hidden;width:90%}#if_r-burger{align-content:center;box-shadow:-2px 0 2px grey;cursor:pointer;display:flex;justify-content:center;width:10%}#if_r-burger-icon{color:#000;font-size:larger;margin:auto;padding:0;text-decoration:none}#if_r-burger:hover{color:#e99}.if_r-stats-div{background-color:#aaa;display:none;line-height:15px;max-height:300px;overflow-x:hidden;position:relative;transition:.5s;width:0;z-index:1}.if_r-stats-div a{color:#000;display:block;font-size:16px;padding:0 8px 0 25px;text-decoration:none;transition:.3s}.if_r-stats-div a:hover{color:#f1f1f1}.if_r-stats-div .closebtn{font-size:36px;margin-left:50px;position:absolute;right:25px}.if_r-choice-input{background:transparent;border:none;border-bottom:2px solid #708090;color:#fff;margin:2px;outline:none}.if_r-choice-input:hover{color:#000}@media (max-width:800px){#if_r-output-area{padding:0}#if_r-section-display-area{padding:10px}.if_r-section-choice{max-width:95vw}.if_r-section-choices-list{margin-left:0}#if_r-output-area{max-width:95vw;width:95vw}}
