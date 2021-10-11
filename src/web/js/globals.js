@@ -105,7 +105,7 @@ const helpHtml = `
 <div class="code" id="alerts-area"></div>
 
 <p class="plain-text tooltip symlink" data-target-button="#submit-btn">
-Press <span class="tooltiptext"> Top-left or <br> <code>Ctrl + click</code> </span> &#9654; Run to start a live preview of the story.
+Press <span class="tooltiptext"> Top-left or <br> <code>Ctrl + click</code> </span> <span style="color:#abfd9d">&#9654; Run</span> to start a live preview of the story.
 </p>
 
 <p class="plain-text">

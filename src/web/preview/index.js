@@ -1,11 +1,15 @@
 import IFScript from 'if-script-core/src/IFScript.mjs'
 import Story from 'if-script-core/src/models/Story.mjs'
 
-const IF = new IFScript(IFScript.versions().STREAM)
+const ifscript = new IFScript('STREAM')
+ifscript.init()
+.then(function () {
+  const parser = ifscript.parser
+  const interpreter = ifscript.interpreter
 
-const interpreter = new IF.interpreter()
-
-let storyObj = JSON.parse(localStorage.getItem('if_r-if-object'))
-const story = new Story(storyObj.name, { sections: storyObj.sections, passages: [], scenes: storyObj.scenes }, storyObj.settings, {globals: null, stats: null})
-interpreter.loadStory(story, null, 'bricks')
-document.title = interpreter.run.story.name ?? 'IF | Preview'
+	let storyObj = localStorage.getItem('if_r-if-object')
+	const story = Story.fromJson(storyObj)
+	interpreter.loadStory(story, null, 'bricks')
+	document.title = interpreter.run.story.name ?? 'IF | Preview'
+})
+.catch(err => console.log(err))

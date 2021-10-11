@@ -5,7 +5,7 @@ const paths = require('./paths')
 
 module.exports = {
   entry: {
-    main: path.resolve(__dirname, '../src/web/js/index.js'),
+    main: [path.resolve(__dirname, '../src/web/js/index.js')],
     preview: path.resolve(__dirname, '../src/web/preview/index.js')
   },
   output: {
@@ -54,6 +54,10 @@ module.exports = {
     extensions: ['.js', '.jsx', '.json'],
     alias: {
       '@': paths.src,
+    },
+    fallback: {
+      path: require.resolve("path-browserify"),
+      fs: false
     },
   }
 }

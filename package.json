@@ -5,14 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "standard",
-    "serve": "serve -s dist -l 3001",
-    "compile": "npm run compile:section npm run compile:scene && npm run compile:settings",
-    "compile:section": "nearleyc src/grammar/section.ne -o dist/grammar/section.grammar.js",
-    "compile:scene": "nearleyc src/grammar/scene.ne -o dist/grammar/scene.grammar.js",
-    "compile:settings": "nearleyc src/grammar/settings.ne -o dist/grammar/settings.grammar.js",
+    "serve": "serve -s dist -l 3000",
     "build": "cross-env NODE_ENV=production webpack --config config/webpack.prod.js",
     "build:gh": "cross-env NODE_ENV=production webpack --config config/webpack.gh.js",
-    "start": "cross-env NODE_ENV=development webpack serve --config config/webpack.dev.js",
+    "start": "cross-env NODE_ENV=development BROWSER=none webpack serve --config config/webpack.dev.js",
     "fix": "standard --fix",
     "deploy": "npm run build:gh && git add dist/** && git commit -m \"deploy commit\" && git subtree push --prefix dist origin gh-pages"
   },
@@ -36,13 +32,15 @@
   },
   "homepage": "https://github.com/PlytonRexus/if-script#readme",
   "dependencies": {
-    "if-script-core": "^0.5.7"
+    "if-script-core": "^0.5.18",
+    "path-browserify": "^1.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.14.3",
     "@babel/plugin-proposal-class-properties": "^7.13.0",
     "@babel/preset-env": "^7.14.2",
     "babel-loader": "^8.2.2",
+    "babel-polyfill": "^6.26.0",
     "clean-webpack-plugin": "^4.0.0-alpha.0",
     "cross-env": "^7.0.3",
     "css-loader": "^5.2.6",

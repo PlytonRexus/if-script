@@ -141,7 +141,7 @@ body {
 .parallax {
   /* The image used */
   /* background-image: url("book-background0.jpg"); */
-  background-color: rgb(42, 128, 139);
+  background-color: rgb(90, 90, 90);
 
   /* Set a specific height */
   height: 100vh;
