@@ -11,7 +11,7 @@ specifiers:
   css-loader: ^5.2.6
   css-minimizer-webpack-plugin: ^3.0.0
   html-webpack-plugin: ^5.3.1
-  if-script-core: ^0.5.18
+  if-script-core: ^0.5.19
   mini-css-extract-plugin: ^1.6.0
   path-browserify: ^1.0.1
   prettier-config-standard: ^4.0.0
@@ -24,7 +24,7 @@ specifiers:
   webpack-merge: ^5.8.0
 
 dependencies:
-  if-script-core: 0.5.18
+  if-script-core: 0.5.19
   path-browserify: 1.0.1
 
 devDependencies:
@@ -3547,8 +3547,8 @@ packages:
       postcss: 8.3.8
     dev: true
 
-  /if-script-core/0.5.18:
-    resolution: {integrity: sha512-H4zCYu/sJuZ4lGkbC3rgNZSJ4fr45IM1Jjqg0Crfhm4bW9EYn+jPO8QEJtcdU5U/EZMt87T41v9GnLua9r4IeA==}
+  /if-script-core/0.5.19:
+    resolution: {integrity: sha512-z6Zn7n10SXZyrUaBeidzlLsax1IW+l/wzV4hA/trhioAt140wWaI74j4veJIP5b/yHB8/8Oje5gnUVPyYU6kag==}
     hasBin: true
     dependencies:
       fs: 0.0.1-security

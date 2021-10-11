@@ -32,7 +32,7 @@
   },
   "homepage": "https://github.com/PlytonRexus/if-script#readme",
   "dependencies": {
-    "if-script-core": "^0.5.18",
+    "if-script-core": "^0.5.19",
     "path-browserify": "^1.0.1"
   },
   "devDependencies": {
