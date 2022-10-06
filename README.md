@@ -1,5 +1,5 @@
 # IF-SCRIPT
-An extremely simple syntax for writing interactive fiction that can be embedded in any website.
+A straightforward syntax for writing interactive fiction can be embedded in any website.
 
 Make interactive fiction with variables, timers, conditions, music and statistics. The story is parsed into plain HTML, CSS and JavaScript.
 
@@ -36,7 +36,7 @@ In your body, add the following scripts.
 
 ### [Comments](#comments)
 
-A comment is a text block that is not integrated into the final model of the story. Comments exist to help write cleaner stories. For example, by pointing out purposes of certain portions of the story.
+A comment is a text block that is not integrated into the final model of the story. Comments exist to help write cleaner stories, for example, by pointing out the purposes of certain portions of the story.
 ```
 /* A
  multi-line
@@ -45,11 +45,11 @@ A comment is a text block that is not integrated into the final model of the sto
 
 ### [Variables](#variables)
 
-Variables truly create dynamic stories. You can use variables to store a lot of things like character names, inventory items, visited scenes, number of things and many others. You can then display the values of these variables anywhere like so:
+Variables truly create dynamic stories. You can use variables to store many things like character names, inventory items, visited scenes, number of things and many others. You can then display the values of these variables anywhere like so:
 ```
 Your name is ${name}.
 ```
-Obviously, here, variable `name` was used to store the name of a character.
+Here, variable `name` was used to store the name of a character.
  The variables can also be used in conditional logic to determine which [choices](#choice-syntax) and (in a future release) what paragraphs of a [section's](#section-syntax) text should be visible to the reader. You can find more about this under the [choices](#choice-syntax) heading.
 
 You can assign variables beforehand inside story [settings](#settings-syntax).
@@ -88,7 +88,7 @@ scene>
 ````
 ### [Sections](#section-syntax)
 
-Sections are independent locations/situations in a story. These can be reached through [choices](#choice-syntax). Each section can have its own set of settings that allow it to have separate timers that send the reader to a separate section if they do not choose within specified time, and its own music. These features are particularly helpful in dramatic situations.
+Sections are independent locations/situations in a story. These can be reached through [choices](#choice-syntax). Each section can have its own set of settings that allow it to have separate timers that send the reader to a separate section if they do not choose within specified time, and its own music. These features are beneficial in dramatic situations.
 ```
 ss>
    tt> Section Title <tt
@@ -152,7 +152,7 @@ Choices can also do actions like addition (+), subtraction (-), multiplication (
 In each of these, the first variable is assigned values that result from the operation.
 ```
 ch>
-   The power of your name goes up 10 units and your health 
+   The power of your name goes up 10 units, and your health 
     is multiplied \${namePower} times.
    ${__namePower + 10} ${__health * namePower} [[5]]
 <ch
