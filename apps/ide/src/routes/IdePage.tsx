@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import GridLayout, { WidthProvider, type Layout } from 'react-grid-layout/legacy'
 import { CommandPalette } from '../components/CommandPalette'
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel'
 import { EditorPane } from '../components/EditorPane'
@@ -7,21 +8,28 @@ import { PreviewPane } from '../components/PreviewPane'
 import { RuntimeEventsPanel } from '../components/RuntimeEventsPanel'
 import { Sidebar } from '../components/Sidebar'
 import { TopBar } from '../components/TopBar'
+import { DESKTOP_GRID_COLUMNS, DESKTOP_GRID_ROW_HEIGHT, PANEL_IDS, PANEL_LAYOUT_VERSION, deserializeLayout, fromGridLayout, getDefaultDesktopLayout, isDesktopViewport, serializeLayout, toGridLayout } from '../layout/panelLayout'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { idbGet, idbSet } from '../lib/indexedDb'
-import { verifyDirectoryPermission, writeWorkspaceToDirectory, openWorkspaceFromDirectory } from '../lib/fsAccess'
+import { openWorkspaceFromDirectory, verifyDirectoryPermission, writeWorkspaceToDirectory } from '../lib/fsAccess'
 import { downloadBundle, readBundleFromFile } from '../lib/projectBundle'
 import { basename, sortWorkspacePaths, toWorkspacePath } from '../lib/path'
 import { createWorkspaceFromFileMap, useIdeStore } from '../store/workspaceStore'
-import type { CommandPaletteItem, IdeDiagnostic, ParseWorkerRequest, ParseWorkerResponse, RuntimeEventEntry, WorkspaceBundle, WorkspaceFile, WorkspaceManifest } from '../types/interfaces'
+import type { CommandPaletteItem, IdeDiagnostic, PanelId, PanelLayoutState, ParseWorkerRequest, ParseWorkerResponse, RuntimeEventEntry, WorkspaceBundle, WorkspaceFile, WorkspaceManifest } from '../types/interfaces'
 
 const STORAGE_KEY = 'ifscript.ide.workspace.v1'
+const GRID_MARGIN: [number, number] = [12, 12]
+const GRID_CONTAINER_PADDING: [number, number] = [0, 0]
+const DRAG_CANCEL_SELECTOR = 'input,textarea,select,option,button,label,a,.monaco-editor,.graph-controls,.graph-controls *'
+const AutoWidthGridLayout = WidthProvider(GridLayout)
 
 interface PersistedWorkspace {
   manifest: WorkspaceManifest
   files: Record<string, WorkspaceFile>
   activeFilePath: string
   theme: 'day' | 'night'
+  layoutVersion?: number
+  layout?: PanelLayoutState
 }
 
 function fileSnapshot(files: Record<string, WorkspaceFile>): Record<string, string> {
@@ -36,6 +44,11 @@ function pickLineForNeedle(content: string, needle: string): number {
   const lines = content.split(/\r?\n/)
   const idx = lines.findIndex(line => line.includes(needle))
   return idx === -1 ? 1 : idx + 1
+}
+
+function readDesktopMode(): boolean {
+  if (typeof window === 'undefined') return true
+  return isDesktopViewport(window.innerWidth)
 }
 
 export function IdePage(): JSX.Element {
@@ -72,6 +85,9 @@ export function IdePage(): JSX.Element {
   const setStorageMode = useIdeStore(state => state.setStorageMode)
 
   const [cursorTarget, setCursorTarget] = useState<{ line: number, col: number, nonce: number } | null>(null)
+  const [panelLayout, setPanelLayout] = useState<PanelLayoutState>(() => getDefaultDesktopLayout())
+  const [desktopMode, setDesktopMode] = useState<boolean>(() => readDesktopMode())
+  const workspaceLayoutRef = useRef<HTMLElement | null>(null)
   const workerRef = useRef<Worker | null>(null)
   const requestIdRef = useRef(0)
 
@@ -82,8 +98,19 @@ export function IdePage(): JSX.Element {
   }, [filesMap])
 
   const activeFile = filesMap[activeFilePath] ?? null
-
   const snapshot = useMemo(() => fileSnapshot(filesMap), [filesMap])
+  const desktopGridLayout = useMemo(() => toGridLayout(panelLayout), [panelLayout])
+
+  const persistWorkspace = useCallback((layout: PanelLayoutState) => {
+    return idbSet<PersistedWorkspace>(STORAGE_KEY, {
+      manifest,
+      files: filesMap,
+      activeFilePath,
+      theme,
+      layoutVersion: PANEL_LAYOUT_VERSION,
+      layout: serializeLayout(layout)
+    })
+  }, [activeFilePath, filesMap, manifest, theme])
 
   const runCheck = useCallback(() => {
     const worker = workerRef.current
@@ -142,29 +169,51 @@ export function IdePage(): JSX.Element {
         activeFilePath: persisted.activeFilePath
       })
       setTheme(persisted.theme ?? 'day')
+      const canRestoreLayout = persisted.layoutVersion == null || persisted.layoutVersion === PANEL_LAYOUT_VERSION
+      const restoredLayout = canRestoreLayout ? deserializeLayout(persisted.layout) : null
+      setPanelLayout(restoredLayout ?? getDefaultDesktopLayout())
     })()
   }, [setTheme, setWorkspace])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void idbSet<PersistedWorkspace>(STORAGE_KEY, {
-        manifest,
-        files: filesMap,
-        activeFilePath,
-        theme
-      })
+      void persistWorkspace(panelLayout)
     }, 300)
 
     return () => window.clearTimeout(timer)
-  }, [activeFilePath, filesMap, manifest, theme])
+  }, [panelLayout, persistWorkspace])
 
   useEffect(() => {
     document.body.dataset.theme = theme
   }, [theme])
 
+  useEffect(() => {
+    const onResize = () => {
+      setDesktopMode(readDesktopMode())
+    }
+    onResize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  useEffect(() => {
+    if (playtestNonce === 0) return
+    const frame = window.requestAnimationFrame(() => {
+      const previewTile = workspaceLayoutRef.current?.querySelector<HTMLElement>('[data-panel-id="preview"]')
+      previewTile?.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [playtestNonce])
+
   const saveLocal = useCallback(() => {
     saveCheckpoint()
   }, [saveCheckpoint])
+
+  const resetLayout = useCallback(() => {
+    const next = getDefaultDesktopLayout()
+    setPanelLayout(next)
+    void persistWorkspace(next)
+  }, [persistWorkspace])
 
   const jumpToDiagnostic = useCallback((diagnostic: IdeDiagnostic) => {
     const targetFile = diagnostic.file
@@ -298,6 +347,94 @@ export function IdePage(): JSX.Element {
     deleteFile(activeFile.path)
   }, [activeFile, deleteFile])
 
+  const handleDesktopLayoutChange = useCallback((nextLayout: Layout) => {
+    setPanelLayout(fromGridLayout(nextLayout))
+  }, [])
+
+  const renderPanel = useCallback((panelId: PanelId): JSX.Element => {
+    if (panelId === 'workspace') {
+      return (
+        <Sidebar
+          files={files}
+          activeFilePath={activeFilePath}
+          rootFile={manifest.rootFile}
+          onOpenFile={setActiveFile}
+          onSetRootFile={setRootFile}
+        />
+      )
+    }
+
+    if (panelId === 'editor') {
+      return (
+        <EditorPane
+          file={activeFile}
+          diagnostics={diagnostics}
+          cursorTarget={cursorTarget}
+          onChange={(next) => {
+            if (!activeFile) return
+            setFileContent(activeFile.path, next)
+          }}
+        />
+      )
+    }
+
+    if (panelId === 'preview') {
+      return (
+        <PreviewPane
+          manifest={manifest}
+          snapshot={snapshot}
+          playtestNonce={playtestNonce}
+          onRuntimeEvent={(entry: RuntimeEventEntry) => addRuntimeEvent(entry)}
+        />
+      )
+    }
+
+    if (panelId === 'graph') {
+      return <GraphPane graph={graph} onOpenNode={jumpToGraphNode} />
+    }
+
+    if (panelId === 'diagnostics') {
+      return <DiagnosticsPanel diagnostics={diagnostics} onJumpToDiagnostic={jumpToDiagnostic} />
+    }
+
+    if (panelId === 'runtime') {
+      return <RuntimeEventsPanel events={runtimeEvents} onClear={clearRuntimeEvents} />
+    }
+
+    return (
+      <section className="panel timings-panel">
+        <div className="panel-header">
+          <h2>Worker Timings</h2>
+        </div>
+        <div className="timings-body">
+          <p>Parse: {parseTimings.parseMs.toFixed(1)}ms</p>
+          <p>Analyze: {parseTimings.analyzeMs.toFixed(1)}ms</p>
+          <p>Total: {parseTimings.totalMs.toFixed(1)}ms</p>
+          <p>Entry: {basename(manifest.rootFile)}</p>
+        </div>
+      </section>
+    )
+  }, [
+    activeFile,
+    activeFilePath,
+    addRuntimeEvent,
+    clearRuntimeEvents,
+    cursorTarget,
+    diagnostics,
+    files,
+    graph,
+    jumpToDiagnostic,
+    jumpToGraphNode,
+    manifest,
+    parseTimings,
+    playtestNonce,
+    runtimeEvents,
+    setActiveFile,
+    setFileContent,
+    setRootFile,
+    snapshot
+  ])
+
   const commands: CommandPaletteItem[] = useMemo(() => [
     {
       id: 'cmd-check',
@@ -372,51 +509,42 @@ export function IdePage(): JSX.Element {
         onWriteFolder={() => { void writeDirectory() }}
         onImportBundle={() => { void importBundle() }}
         onExportBundle={exportBundle}
+        onResetLayout={resetLayout}
         onToggleTheme={toggleTheme}
         onCommandPalette={() => setCommandPaletteOpen(!commandPaletteOpen)}
       />
 
-      <main className="workspace-layout">
-        <Sidebar
-          files={files}
-          activeFilePath={activeFilePath}
-          rootFile={manifest.rootFile}
-          onOpenFile={setActiveFile}
-          onSetRootFile={setRootFile}
-        />
-
-        <section className="editor-column">
-          <EditorPane
-            file={activeFile}
-            diagnostics={diagnostics}
-            cursorTarget={cursorTarget}
-            onChange={(next) => {
-              if (!activeFile) return
-              setFileContent(activeFile.path, next)
-            }}
-          />
-        </section>
-
-        <section className="inspector-column">
-          <PreviewPane
-            manifest={manifest}
-            snapshot={snapshot}
-            playtestNonce={playtestNonce}
-            onRuntimeEvent={(entry: RuntimeEventEntry) => addRuntimeEvent(entry)}
-          />
-          <GraphPane graph={graph} onOpenNode={jumpToGraphNode} />
-          <DiagnosticsPanel diagnostics={diagnostics} onJumpToDiagnostic={jumpToDiagnostic} />
-          <RuntimeEventsPanel events={runtimeEvents} onClear={clearRuntimeEvents} />
-          <section className="panel timings-panel">
-            <div className="panel-header">
-              <h2>Worker Timings</h2>
-            </div>
-            <p>Parse: {parseTimings.parseMs.toFixed(1)}ms</p>
-            <p>Analyze: {parseTimings.analyzeMs.toFixed(1)}ms</p>
-            <p>Total: {parseTimings.totalMs.toFixed(1)}ms</p>
-            <p>Entry: {basename(manifest.rootFile)}</p>
+      <main className="workspace-layout" ref={workspaceLayoutRef}>
+        {desktopMode ? (
+          <AutoWidthGridLayout
+            className="workspace-grid"
+            layout={desktopGridLayout}
+            cols={DESKTOP_GRID_COLUMNS}
+            rowHeight={DESKTOP_GRID_ROW_HEIGHT}
+            margin={GRID_MARGIN}
+            containerPadding={GRID_CONTAINER_PADDING}
+            isDraggable
+            isResizable
+            compactType="vertical"
+            draggableHandle=".panel-header"
+            draggableCancel={DRAG_CANCEL_SELECTOR}
+            onLayoutChange={handleDesktopLayoutChange}
+          >
+            {PANEL_IDS.map(panelId => (
+              <div key={panelId} data-panel-id={panelId} className={`workspace-tile tile-${panelId}`}>
+                {renderPanel(panelId)}
+              </div>
+            ))}
+          </AutoWidthGridLayout>
+        ) : (
+          <section className="workspace-stack" data-testid="workspace-stack">
+            {PANEL_IDS.map(panelId => (
+              <div key={panelId} data-panel-id={panelId} className={`workspace-stack-item stack-${panelId}`}>
+                {renderPanel(panelId)}
+              </div>
+            ))}
           </section>
-        </section>
+        )}
       </main>
 
       <CommandPalette open={commandPaletteOpen} items={commands} onClose={() => setCommandPaletteOpen(false)} />

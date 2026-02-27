@@ -95,3 +95,23 @@ export interface RuntimeEventEntry {
   at: string
   payload: unknown
 }
+
+export type PanelId =
+  | 'workspace'
+  | 'editor'
+  | 'preview'
+  | 'graph'
+  | 'diagnostics'
+  | 'runtime'
+  | 'timings'
+
+export interface PanelLayoutItem {
+  x: number
+  y: number
+  w: number
+  h: number
+  minW: number
+  minH: number
+}
+
+export type PanelLayoutState = Record<PanelId, PanelLayoutItem>

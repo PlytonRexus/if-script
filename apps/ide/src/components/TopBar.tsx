@@ -14,13 +14,14 @@ interface TopBarProps {
   onExportBundle: () => void
   onToggleTheme: () => void
   onCommandPalette: () => void
+  onResetLayout: () => void
 }
 
 export function TopBar(props: TopBarProps): JSX.Element {
   return (
     <header className="top-bar">
       <div className="title-wrap">
-        <h1>IF-Script IDE</h1>
+        <h1>IF-Script</h1>
         <p>{props.projectName}</p>
       </div>
 
@@ -40,6 +41,7 @@ export function TopBar(props: TopBarProps): JSX.Element {
         <button onClick={props.onWriteFolder}>Write Folder</button>
         <button onClick={props.onImportBundle}>Import</button>
         <button onClick={props.onExportBundle}>Export</button>
+        <button onClick={props.onResetLayout}>Reset Layout</button>
         <button onClick={props.onToggleTheme}>Theme</button>
         <button onClick={props.onCommandPalette}>Palette</button>
       </div>

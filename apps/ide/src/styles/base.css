@@ -103,10 +103,8 @@ button {
 }
 
 .workspace-layout {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.95fr) minmax(420px, 1.3fr) minmax(350px, 1fr);
-  gap: 0.75rem;
-  align-items: start;
+  flex: 1;
+  min-height: 0;
 }
 
 .panel {
@@ -136,9 +134,44 @@ button {
   color: var(--text-muted);
 }
 
+.workspace-grid {
+  min-height: calc(100vh - 140px);
+}
+
+.workspace-grid .react-grid-item {
+  min-height: 0;
+}
+
+.workspace-grid .react-grid-placeholder {
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 24%, transparent 76%);
+}
+
+.workspace-tile {
+  min-height: 0;
+}
+
+.workspace-tile > .panel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.workspace-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.workspace-stack-item > .panel {
+  display: flex;
+  flex-direction: column;
+}
+
 .sidebar {
-  max-height: calc(100vh - 140px);
-  overflow: auto;
+  height: 100%;
+  min-height: 0;
 }
 
 .file-list {
@@ -148,6 +181,9 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
 }
 
 .file-item {
@@ -190,18 +226,16 @@ button {
   font-weight: 800;
 }
 
-.editor-column,
-.inspector-column {
+.editor-pane {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
   min-height: 0;
 }
 
-.editor-pane {
-  min-height: calc(100vh - 140px);
-  display: flex;
-  flex-direction: column;
+.editor-pane > :last-child {
+  min-height: 0;
+  flex: 1;
 }
 
 .editor-pane .monaco-editor,
@@ -210,6 +244,10 @@ button {
 }
 
 .preview-panel {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding-bottom: 0.5rem;
 }
 
@@ -224,7 +262,8 @@ button {
   margin: 0.25rem 0.75rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: 10px;
-  min-height: 240px;
+  min-height: 180px;
+  flex: 1;
   background: color-mix(in srgb, var(--bg-panel-strong) 85%, var(--accent-2) 15%);
   overflow: auto;
 }
@@ -233,8 +272,10 @@ button {
 .runtime-events,
 .graph-panel,
 .timings-panel {
-  max-height: 340px;
-  overflow: auto;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .diagnostic-list,
@@ -243,6 +284,9 @@ button {
   flex-direction: column;
   gap: 0.4rem;
   padding: 0.55rem;
+  min-height: 0;
+  overflow: auto;
+  flex: 1;
 }
 
 .diagnostic-item {
@@ -290,13 +334,15 @@ button {
 }
 
 .graph-canvas-wrap {
-  overflow: auto;
   padding: 0.65rem;
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
 }
 
 .graph-canvas {
   width: 100%;
-  min-height: 340px;
+  min-height: 260px;
   transform-origin: center center;
   transition: transform 180ms ease;
 }
@@ -366,7 +412,13 @@ button {
   padding-bottom: 0.6rem;
 }
 
-.timings-panel p {
+.timings-body {
+  min-height: 0;
+  overflow: auto;
+  flex: 1;
+}
+
+.timings-body p {
   margin: 0.25rem 0.75rem;
   font-family: var(--font-mono);
   font-size: 0.75rem;
@@ -442,16 +494,12 @@ button {
 }
 
 @media (max-width: 1180px) {
-  .workspace-layout {
-    grid-template-columns: 1fr;
-  }
-
   .sidebar,
   .editor-pane,
   .diagnostics-panel,
   .runtime-events,
   .graph-panel {
-    max-height: none;
+    height: auto;
   }
 
   .editor-pane {
