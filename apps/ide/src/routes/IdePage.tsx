@@ -14,8 +14,20 @@ import { idbGet, idbSet } from '../lib/indexedDb'
 import { openWorkspaceFromDirectory, verifyDirectoryPermission, writeWorkspaceToDirectory } from '../lib/fsAccess'
 import { downloadBundle, readBundleFromFile } from '../lib/projectBundle'
 import { basename, sortWorkspacePaths, toWorkspacePath } from '../lib/path'
+import { buildSectionPreviewKey, resolveSectionAtCursor } from '../preview/sectionPreview'
 import { createWorkspaceFromFileMap, useIdeStore } from '../store/workspaceStore'
-import type { CommandPaletteItem, IdeDiagnostic, PanelId, PanelLayoutState, ParseWorkerRequest, ParseWorkerResponse, RuntimeEventEntry, WorkspaceBundle, WorkspaceFile, WorkspaceManifest } from '../types/interfaces'
+import type {
+  CommandPaletteItem,
+  IdeDiagnostic,
+  PanelId,
+  PanelLayoutState,
+  ParseWorkerRequest,
+  ParseWorkerResponse,
+  RuntimeEventEntry,
+  WorkspaceBundle,
+  WorkspaceFile,
+  WorkspaceManifest
+} from '../types/interfaces'
 
 const STORAGE_KEY = 'ifscript.ide.workspace.v1'
 const GRID_MARGIN: [number, number] = [12, 12]
@@ -30,6 +42,7 @@ interface PersistedWorkspace {
   theme: 'day' | 'night'
   layoutVersion?: number
   layout?: PanelLayoutState
+  sectionPreviewOverrides?: Record<string, string>
 }
 
 function fileSnapshot(files: Record<string, WorkspaceFile>): Record<string, string> {
@@ -57,6 +70,8 @@ export function IdePage(): JSX.Element {
   const activeFilePath = useIdeStore(state => state.activeFilePath)
   const diagnostics = useIdeStore(state => state.diagnostics)
   const graph = useIdeStore(state => state.graph)
+  const sectionIndex = useIdeStore(state => state.sectionIndex)
+  const variableCatalog = useIdeStore(state => state.variableCatalog)
   const parseStatus = useIdeStore(state => state.parseStatus)
   const parseTimings = useIdeStore(state => state.parseTimings)
   const commandPaletteOpen = useIdeStore(state => state.commandPaletteOpen)
@@ -85,6 +100,8 @@ export function IdePage(): JSX.Element {
   const setStorageMode = useIdeStore(state => state.setStorageMode)
 
   const [cursorTarget, setCursorTarget] = useState<{ line: number, col: number, nonce: number } | null>(null)
+  const [cursorPosition, setCursorPosition] = useState<{ line: number, col: number } | null>(null)
+  const [sectionPreviewOverrides, setSectionPreviewOverrides] = useState<Record<string, string>>({})
   const [panelLayout, setPanelLayout] = useState<PanelLayoutState>(() => getDefaultDesktopLayout())
   const [desktopMode, setDesktopMode] = useState<boolean>(() => readDesktopMode())
   const workspaceLayoutRef = useRef<HTMLElement | null>(null)
@@ -100,6 +117,12 @@ export function IdePage(): JSX.Element {
   const activeFile = filesMap[activeFilePath] ?? null
   const snapshot = useMemo(() => fileSnapshot(filesMap), [filesMap])
   const desktopGridLayout = useMemo(() => toGridLayout(panelLayout), [panelLayout])
+  const focusedSection = useMemo(() => {
+    return resolveSectionAtCursor(sectionIndex, activeFilePath, cursorPosition?.line ?? null)
+  }, [activeFilePath, cursorPosition?.line, sectionIndex])
+  const focusedSectionNodeId = focusedSection ? `section:${focusedSection.title}` : null
+  const focusedSectionKey = focusedSection ? buildSectionPreviewKey(focusedSection) : null
+  const focusedOverrideText = focusedSectionKey ? (sectionPreviewOverrides[focusedSectionKey] ?? '{}') : '{}'
 
   const persistWorkspace = useCallback((layout: PanelLayoutState) => {
     return idbSet<PersistedWorkspace>(STORAGE_KEY, {
@@ -108,9 +131,10 @@ export function IdePage(): JSX.Element {
       activeFilePath,
       theme,
       layoutVersion: PANEL_LAYOUT_VERSION,
-      layout: serializeLayout(layout)
+      layout: serializeLayout(layout),
+      sectionPreviewOverrides
     })
-  }, [activeFilePath, filesMap, manifest, theme])
+  }, [activeFilePath, filesMap, manifest, sectionPreviewOverrides, theme])
 
   const runCheck = useCallback(() => {
     const worker = workerRef.current
@@ -139,6 +163,8 @@ export function IdePage(): JSX.Element {
       setDiagnosticsGraph({
         diagnostics: payload.diagnostics,
         graph: payload.graph,
+        sectionIndex: payload.sectionIndex,
+        variableCatalog: payload.variableCatalog,
         parseStatus: payload.ok ? (hasErrors ? 'error' : 'ok') : 'error',
         parseRequestId: payload.requestId,
         timings: payload.timings
@@ -172,6 +198,7 @@ export function IdePage(): JSX.Element {
       const canRestoreLayout = persisted.layoutVersion == null || persisted.layoutVersion === PANEL_LAYOUT_VERSION
       const restoredLayout = canRestoreLayout ? deserializeLayout(persisted.layout) : null
       setPanelLayout(restoredLayout ?? getDefaultDesktopLayout())
+      setSectionPreviewOverrides(persisted.sectionPreviewOverrides ?? {})
     })()
   }, [setTheme, setWorkspace])
 
@@ -215,6 +242,14 @@ export function IdePage(): JSX.Element {
     void persistWorkspace(next)
   }, [persistWorkspace])
 
+  const updateFocusedSectionOverrides = useCallback((next: string) => {
+    if (!focusedSectionKey) return
+    setSectionPreviewOverrides(state => ({
+      ...state,
+      [focusedSectionKey]: next
+    }))
+  }, [focusedSectionKey])
+
   const jumpToDiagnostic = useCallback((diagnostic: IdeDiagnostic) => {
     const targetFile = diagnostic.file
     if (targetFile && filesMap[targetFile]) {
@@ -231,6 +266,12 @@ export function IdePage(): JSX.Element {
   const jumpToGraphNode = useCallback((nodeId: string) => {
     if (nodeId.startsWith('section:')) {
       const title = nodeId.replace('section:', '')
+      const indexMatch = sectionIndex.find(entry => entry.title === title && Boolean(filesMap[entry.file]))
+      if (indexMatch) {
+        setActiveFile(indexMatch.file)
+        setCursorTarget({ line: indexMatch.line, col: indexMatch.col, nonce: Date.now() })
+        return
+      }
       const sectionNeedles = [`section "${title}"`, `@title "${title}"`, `@title '${title}'`]
 
       const targetFile = Object.values(filesMap).find(file => sectionNeedles.some(needle => file.content.includes(needle)))
@@ -246,7 +287,7 @@ export function IdePage(): JSX.Element {
       setActiveFile(manifest.rootFile)
       setCursorTarget({ line: 1, col: 1, nonce: Date.now() })
     }
-  }, [filesMap, manifest.rootFile, setActiveFile])
+  }, [filesMap, manifest.rootFile, sectionIndex, setActiveFile])
 
   const openDirectory = useCallback(async () => {
     try {
@@ -260,11 +301,12 @@ export function IdePage(): JSX.Element {
       setWorkspace({ manifest: created.manifest, files: created.files, activeFilePath: created.manifest.rootFile })
       setFsRootHandle(opened.rootHandle)
       setStorageMode('fs-access')
+      setSectionPreviewOverrides({})
       saveCheckpoint()
     } catch (err) {
       window.alert(String((err as Error).message ?? err))
     }
-  }, [saveCheckpoint, setFsRootHandle, setStorageMode, setWorkspace])
+  }, [saveCheckpoint, setFsRootHandle, setStorageMode, setWorkspace, setSectionPreviewOverrides])
 
   const writeDirectory = useCallback(async () => {
     try {
@@ -310,13 +352,14 @@ export function IdePage(): JSX.Element {
         })
         setWorkspace({ manifest: created.manifest, files: created.files, activeFilePath: created.manifest.rootFile })
         setStorageMode('local-only')
+        setSectionPreviewOverrides({})
       } catch (err) {
         window.alert(String((err as Error).message ?? err))
       }
     }
 
     input.click()
-  }, [setStorageMode, setWorkspace])
+  }, [setSectionPreviewOverrides, setStorageMode, setWorkspace])
 
   const exportBundle = useCallback(() => {
     const bundle: WorkspaceBundle = {
@@ -370,6 +413,7 @@ export function IdePage(): JSX.Element {
           file={activeFile}
           diagnostics={diagnostics}
           cursorTarget={cursorTarget}
+          onCursorChange={setCursorPosition}
           onChange={(next) => {
             if (!activeFile) return
             setFileContent(activeFile.path, next)
@@ -383,6 +427,11 @@ export function IdePage(): JSX.Element {
         <PreviewPane
           manifest={manifest}
           snapshot={snapshot}
+          parseStatus={parseStatus}
+          focusedSection={focusedSection}
+          variableCatalog={variableCatalog}
+          variableOverrideText={focusedOverrideText}
+          onVariableOverrideTextChange={updateFocusedSectionOverrides}
           playtestNonce={playtestNonce}
           onRuntimeEvent={(entry: RuntimeEventEntry) => addRuntimeEvent(entry)}
         />
@@ -390,7 +439,7 @@ export function IdePage(): JSX.Element {
     }
 
     if (panelId === 'graph') {
-      return <GraphPane graph={graph} onOpenNode={jumpToGraphNode} />
+      return <GraphPane graph={graph} focusedNodeId={focusedSectionNodeId} onOpenNode={jumpToGraphNode} />
     }
 
     if (panelId === 'diagnostics') {
@@ -422,17 +471,24 @@ export function IdePage(): JSX.Element {
     cursorTarget,
     diagnostics,
     files,
+    focusedOverrideText,
+    focusedSection,
+    focusedSectionNodeId,
     graph,
     jumpToDiagnostic,
     jumpToGraphNode,
     manifest,
+    parseStatus,
     parseTimings,
     playtestNonce,
     runtimeEvents,
     setActiveFile,
+    setCursorPosition,
     setFileContent,
     setRootFile,
-    snapshot
+    snapshot,
+    updateFocusedSectionOverrides,
+    variableCatalog
   ])
 
   const commands: CommandPaletteItem[] = useMemo(() => [

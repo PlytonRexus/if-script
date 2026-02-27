@@ -258,6 +258,60 @@ button {
   color: var(--text-muted);
 }
 
+.preview-section-context {
+  margin: 0;
+  padding: 0.45rem 0.75rem 0;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.preview-seed-editor {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0.75rem 0.55rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-panel-strong) 90%, var(--accent) 10%);
+}
+
+.preview-seed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.preview-seed-header h3 {
+  margin: 0;
+  font-size: 0.76rem;
+}
+
+.preview-seed-input {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 0.45rem;
+}
+
+.preview-seed-error {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--warn);
+}
+
+.preview-seed-hints {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
 .preview-host {
   margin: 0.25rem 0.75rem 0.75rem;
   border: 1px solid var(--border);
@@ -357,6 +411,15 @@ button {
   stroke-dasharray: 4 3;
 }
 
+.graph-edge.is-highlighted {
+  stroke-width: 2.2;
+  stroke: color-mix(in srgb, var(--accent-2) 75%, var(--text-main) 25%);
+}
+
+.graph-edge.is-dimmed {
+  opacity: 0.2;
+}
+
 .graph-node {
   fill: color-mix(in srgb, var(--accent) 20%, var(--bg-panel-strong) 80%);
   stroke: var(--border);
@@ -381,9 +444,49 @@ button {
   opacity: 0.38;
 }
 
+.graph-node.is-focused {
+  stroke: var(--accent-2);
+  stroke-width: 2.5;
+}
+
+.graph-node.is-neighbor {
+  stroke-width: 2;
+}
+
+.graph-node.is-dimmed {
+  opacity: 0.25;
+}
+
 .graph-label {
   font-size: 10px;
   fill: var(--text-main);
+}
+
+.graph-context {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+
+.graph-links-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem;
+  background: color-mix(in srgb, var(--bg-panel-strong) 90%, var(--accent-2) 10%);
+}
+
+.graph-links-panel h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+}
+
+.graph-links-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
 }
 
 .event-item {
@@ -512,5 +615,9 @@ button {
 
   .toolbar-actions {
     justify-content: flex-start;
+  }
+
+  .graph-context {
+    grid-template-columns: 1fr;
   }
 }

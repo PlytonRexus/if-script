@@ -39,6 +39,7 @@ interface EditorPaneProps {
   file: WorkspaceFile | null
   diagnostics: IdeDiagnostic[]
   cursorTarget: CursorTarget | null
+  onCursorChange?: (position: { line: number, col: number }) => void
   onChange: (next: string) => void
 }
 
@@ -51,6 +52,7 @@ function severityToMonaco(monaco: typeof Monaco, severity: IdeDiagnostic['severi
 export function EditorPane(props: EditorPaneProps): JSX.Element {
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<typeof Monaco | null>(null)
+  const cursorDisposableRef = useRef<Monaco.IDisposable | null>(null)
 
   const activeDiagnostics = useMemo(() => {
     if (!props.file) return []
@@ -64,6 +66,20 @@ export function EditorPane(props: EditorPaneProps): JSX.Element {
   const onMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
     monacoRef.current = monaco
+    cursorDisposableRef.current?.dispose()
+    cursorDisposableRef.current = editor.onDidChangeCursorPosition((event) => {
+      props.onCursorChange?.({
+        line: event.position.lineNumber,
+        col: event.position.column
+      })
+    })
+    const currentPosition = editor.getPosition()
+    if (currentPosition) {
+      props.onCursorChange?.({
+        line: currentPosition.lineNumber,
+        col: currentPosition.column
+      })
+    }
   }
 
   useEffect(() => {
@@ -94,6 +110,13 @@ export function EditorPane(props: EditorPaneProps): JSX.Element {
     editorRef.current.revealLineInCenter(props.cursorTarget.line)
     editorRef.current.focus()
   }, [props.cursorTarget])
+
+  useEffect(() => {
+    return () => {
+      cursorDisposableRef.current?.dispose()
+      cursorDisposableRef.current = null
+    }
+  }, [])
 
   if (!props.file) {
     return (

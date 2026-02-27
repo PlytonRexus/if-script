@@ -1,5 +1,13 @@
 import { create } from 'zustand'
-import type { IdeDiagnostic, RuntimeEventEntry, StoryGraph, WorkspaceFile, WorkspaceManifest } from '../types/interfaces'
+import type {
+  IdeDiagnostic,
+  RuntimeEventEntry,
+  SectionIndexEntry,
+  StoryGraph,
+  VariableCatalogEntry,
+  WorkspaceFile,
+  WorkspaceManifest
+} from '../types/interfaces'
 import { sortWorkspacePaths, toWorkspacePath } from '../lib/path'
 
 const DEFAULT_STORY = `settings__
@@ -54,6 +62,8 @@ interface IdeState {
   activeFilePath: string
   diagnostics: IdeDiagnostic[]
   graph: StoryGraph
+  sectionIndex: SectionIndexEntry[]
+  variableCatalog: VariableCatalogEntry[]
   parseStatus: 'idle' | 'running' | 'error' | 'ok'
   parseRequestId: number
   parseTimings: { parseMs: number, analyzeMs: number, totalMs: number }
@@ -69,7 +79,15 @@ interface IdeState {
   createFile: (requestedPath: string) => void
   renameFile: (oldPath: string, nextPath: string) => void
   deleteFile: (path: string) => void
-  setDiagnosticsGraph: (input: { diagnostics: IdeDiagnostic[], graph: StoryGraph, parseStatus: IdeState['parseStatus'], parseRequestId: number, timings: IdeState['parseTimings'] }) => void
+  setDiagnosticsGraph: (input: {
+    diagnostics: IdeDiagnostic[]
+    graph: StoryGraph
+    sectionIndex: SectionIndexEntry[]
+    variableCatalog: VariableCatalogEntry[]
+    parseStatus: IdeState['parseStatus']
+    parseRequestId: number
+    timings: IdeState['parseTimings']
+  }) => void
   setParseRunning: (requestId: number) => void
   setCommandPaletteOpen: (value: boolean) => void
   setTheme: (value: 'day' | 'night') => void
@@ -91,6 +109,8 @@ export const useIdeStore = create<IdeState>((set, get) => ({
   activeFilePath: initial.activeFilePath,
   diagnostics: [],
   graph: { nodes: [], edges: [], startNodeId: null, deadEnds: [] },
+  sectionIndex: [],
+  variableCatalog: [],
   parseStatus: 'idle',
   parseRequestId: 0,
   parseTimings: { parseMs: 0, analyzeMs: 0, totalMs: 0 },
@@ -111,6 +131,8 @@ export const useIdeStore = create<IdeState>((set, get) => ({
       activeFilePath: activeFilePath ?? manifest.rootFile,
       diagnostics: [],
       graph: { nodes: [], edges: [], startNodeId: null, deadEnds: [] },
+      sectionIndex: [],
+      variableCatalog: [],
       parseStatus: 'idle',
       runtimeEvents: []
     })
@@ -228,11 +250,13 @@ export const useIdeStore = create<IdeState>((set, get) => ({
     }))
   },
 
-  setDiagnosticsGraph: ({ diagnostics, graph, parseStatus, parseRequestId, timings }) => {
+  setDiagnosticsGraph: ({ diagnostics, graph, sectionIndex, variableCatalog, parseStatus, parseRequestId, timings }) => {
     if (parseRequestId < get().parseRequestId) return
     set({
       diagnostics,
       graph,
+      sectionIndex,
+      variableCatalog,
       parseStatus,
       parseRequestId,
       parseTimings: timings

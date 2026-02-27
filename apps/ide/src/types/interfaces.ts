@@ -55,6 +55,22 @@ export interface StoryGraph {
   deadEnds: string[]
 }
 
+export interface SectionIndexEntry {
+  serial: number
+  title: string
+  file: string
+  line: number
+  col: number
+}
+
+export type InferredVariableType = 'number' | 'string' | 'boolean' | 'array' | 'object' | 'unknown'
+
+export interface VariableCatalogEntry {
+  name: string
+  inferredType: InferredVariableType
+  defaultValue?: unknown
+}
+
 export interface ParseWorkerRequest {
   workspaceSnapshot: Record<string, string>
   entryFile: string
@@ -69,6 +85,8 @@ export interface ParseWorkerResponse {
   story: unknown | null
   diagnostics: IdeDiagnostic[]
   graph: StoryGraph
+  sectionIndex: SectionIndexEntry[]
+  variableCatalog: VariableCatalogEntry[]
   timings: {
     parseMs: number
     analyzeMs: number

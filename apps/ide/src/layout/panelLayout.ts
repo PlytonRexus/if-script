@@ -18,12 +18,12 @@ export const DESKTOP_GRID_ROW_HEIGHT = 34
 const DESKTOP_GRID_MAX_ROWS = 120
 
 const DEFAULT_LAYOUT: PanelLayoutState = {
-  workspace: { x: 0, y: 0, w: 2, h: 26, minW: 2, minH: 10 },
-  editor: { x: 2, y: 0, w: 7, h: 26, minW: 4, minH: 10 },
-  preview: { x: 0, y: 26, w: 12, h: 9, minW: 4, minH: 5 },
-  graph: { x: 9, y: 5, w: 3, h: 10, minW: 2, minH: 5 },
+  workspace: { x: 0, y: 0, w: 2, h: 25, minW: 2, minH: 10 },
+  editor: { x: 2, y: 0, w: 7, h: 25, minW: 4, minH: 10 },
+  preview: { x: 0, y: 26, w: 12, h: 20, minW: 4, minH: 15 },
+  graph: { x: 9, y: 5, w: 3, h: 12, minW: 2, minH: 5 },
   diagnostics: { x: 9, y: 15, w: 3, h: 4, minW: 2, minH: 3 },
-  runtime: { x: 9, y: 19, w: 3, h: 4, minW: 2, minH: 3 },
+  runtime: { x: 9, y: 19, w: 3, h: 6, minW: 2, minH: 3 },
   timings: { x: 9, y: 23, w: 3, h: 3, minW: 2, minH: 3 }
 }
 

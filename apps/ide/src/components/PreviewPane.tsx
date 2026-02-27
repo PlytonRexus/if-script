@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import IFScript from 'if-script-core'
-import type { RuntimeEventEntry, WorkspaceManifest } from '../types/interfaces'
+import { buildSectionPreviewStartOptions, buildVariableOverridesTemplate, parseVariableOverridesJson } from '../preview/sectionPreview'
+import type { RuntimeEventEntry, SectionIndexEntry, VariableCatalogEntry, WorkspaceManifest } from '../types/interfaces'
 
 const FORWARDED_EVENTS = [
   'session_started',
@@ -22,31 +23,82 @@ const FORWARDED_EVENTS = [
 interface PreviewPaneProps {
   manifest: WorkspaceManifest
   snapshot: Record<string, string>
+  parseStatus: 'idle' | 'running' | 'error' | 'ok'
+  focusedSection: SectionIndexEntry | null
+  variableCatalog: VariableCatalogEntry[]
+  variableOverrideText: string
+  onVariableOverrideTextChange: (next: string) => void
   playtestNonce: number
   onRuntimeEvent: (entry: RuntimeEventEntry) => void
 }
 
 export function PreviewPane(props: PreviewPaneProps): JSX.Element {
-  const { manifest, snapshot, playtestNonce, onRuntimeEvent } = props
+  const {
+    manifest,
+    snapshot,
+    parseStatus,
+    focusedSection,
+    variableCatalog,
+    variableOverrideText,
+    onVariableOverrideTextChange,
+    playtestNonce,
+    onRuntimeEvent
+  } = props
   const previewRef = useRef<HTMLDivElement | null>(null)
   const runtimeRef = useRef<any>(null)
-  const latestRef = useRef({ manifest, snapshot, onRuntimeEvent })
+  const latestRef = useRef({
+    manifest,
+    snapshot,
+    parseStatus,
+    focusedSection,
+    variableOverrideText,
+    onRuntimeEvent
+  })
   const [status, setStatus] = useState('idle')
-  const [message, setMessage] = useState('Run Playtest to mount runtime preview.')
+  const [message, setMessage] = useState('Move the cursor inside a section to mount preview.')
+
+  const parsedOverrides = useMemo(() => {
+    return parseVariableOverridesJson(variableOverrideText)
+  }, [variableOverrideText])
+
+  const startOptions = useMemo(() => {
+    return buildSectionPreviewStartOptions(focusedSection, parsedOverrides.value ?? {})
+  }, [focusedSection, parsedOverrides.value])
 
   useEffect(() => {
-    latestRef.current = { manifest, snapshot, onRuntimeEvent }
-  }, [manifest, onRuntimeEvent, snapshot])
+    latestRef.current = {
+      manifest,
+      snapshot,
+      parseStatus,
+      focusedSection,
+      variableOverrideText,
+      onRuntimeEvent
+    }
+  }, [focusedSection, manifest, onRuntimeEvent, parseStatus, snapshot, variableOverrideText])
 
   useEffect(() => {
-    if (playtestNonce === 0) return
-
     let cancelled = false
+    if (!focusedSection) {
+      setStatus('idle')
+      setMessage('Move the cursor inside a section to mount preview.')
+      return
+    }
+    if (parseStatus !== 'ok') {
+      setStatus('idle')
+      setMessage('Fix parse errors to preview the focused section.')
+      return
+    }
+    if (parsedOverrides.error) {
+      setStatus('error')
+      setMessage('Variable overrides JSON is invalid.')
+      return
+    }
+    if (!startOptions) return
 
     const run = async () => {
       if (!previewRef.current) return
       setStatus('running')
-      setMessage('Starting runtime...')
+      setMessage(`Starting preview at "${focusedSection.title}"...`)
 
       try {
         const current = latestRef.current
@@ -88,14 +140,11 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
         })
 
         runtime.mount(previewRef.current)
-        runtime.start(story, {
-          resumePrompt: false,
-          theme: 'literary-default'
-        })
+        runtime.start(story, startOptions)
 
         if (!cancelled) {
           setStatus('ok')
-          setMessage('Runtime active.')
+          setMessage(`Preview active for "${focusedSection.title}".`)
         }
       } catch (err) {
         if (cancelled) return
@@ -104,21 +153,65 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
       }
     }
 
-    run().catch(() => {})
+    const delay = playtestNonce > 0 ? 50 : 320
+    const timer = window.setTimeout(() => {
+      run().catch(() => {})
+    }, delay)
 
     return () => {
       cancelled = true
+      window.clearTimeout(timer)
     }
-  }, [playtestNonce])
+  }, [focusedSection, parseStatus, parsedOverrides.error, playtestNonce, startOptions])
+
+  const handleUseTemplate = () => {
+    const template = buildVariableOverridesTemplate(variableCatalog)
+    onVariableOverrideTextChange(JSON.stringify(template, null, 2))
+  }
+
+  useEffect(() => {
+    return () => {
+      if (runtimeRef.current?.destroy) {
+        runtimeRef.current.destroy()
+      }
+      runtimeRef.current = null
+    }
+  }, [])
 
   return (
     <section className="panel preview-panel">
       <div className="panel-header">
-        <h2>Live Playtest</h2>
+        <h2>Section Playtest</h2>
         <span className={`status-pill status-${status === 'running' ? 'running' : status === 'ok' ? 'ok' : status === 'error' ? 'error' : 'idle'}`}>{status}</span>
       </div>
 
+      <p className="preview-section-context">
+        {focusedSection
+          ? `Focused: ${focusedSection.title} (line ${focusedSection.line})`
+          : 'Focused: none'}
+      </p>
       <p className="preview-message">{message}</p>
+      <div className="preview-seed-editor">
+        <div className="preview-seed-header">
+          <h3>Variables JSON</h3>
+          <button type="button" className="mini-btn" onClick={handleUseTemplate}>Use Template</button>
+        </div>
+        <textarea
+          className="preview-seed-input"
+          value={variableOverrideText}
+          onChange={(event) => onVariableOverrideTextChange(event.currentTarget.value)}
+          spellCheck={false}
+          disabled={!focusedSection}
+        />
+        {parsedOverrides.error ? <p className="preview-seed-error">{parsedOverrides.error}</p> : null}
+        {variableCatalog.length > 0 ? (
+          <p className="preview-seed-hints">
+            Suggested variables: {variableCatalog.map(variable => `${variable.name}:${variable.inferredType}`).join(', ')}
+          </p>
+        ) : (
+          <p className="preview-seed-hints">No variable hints yet.</p>
+        )}
+      </div>
       <div ref={previewRef} className="preview-host" id="if_r-output-area" />
     </section>
   )

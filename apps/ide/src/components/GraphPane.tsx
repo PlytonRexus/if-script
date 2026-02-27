@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { StoryGraph } from '../types/interfaces'
+import { buildGraphFocusContext, graphEdgeId } from '../graph/focusGraph'
 
 interface GraphPaneProps {
   graph: StoryGraph
+  focusedNodeId: string | null
   onOpenNode: (nodeId: string) => void
 }
 
@@ -35,6 +37,30 @@ export function GraphPane(props: GraphPaneProps): JSX.Element {
     const visible = new Set(nodes.map(node => node.id))
     return props.graph.edges.filter(edge => visible.has(edge.from) && visible.has(edge.to))
   }, [nodes, props.graph.edges])
+
+  const nodeById = useMemo(() => {
+    const map = new Map<string, (typeof nodes)[number]>()
+    nodes.forEach(node => map.set(node.id, node))
+    return map
+  }, [nodes])
+
+  const focusContext = useMemo(() => {
+    return buildGraphFocusContext(edges, props.focusedNodeId)
+  }, [edges, props.focusedNodeId])
+
+  const incomingNodes = useMemo(() => {
+    if (!focusContext) return []
+    return focusContext.incomingNodeIds
+      .map(nodeId => nodeById.get(nodeId))
+      .filter((node): node is NonNullable<typeof node> => Boolean(node))
+  }, [focusContext, nodeById])
+
+  const outgoingNodes = useMemo(() => {
+    if (!focusContext) return []
+    return focusContext.outgoingNodeIds
+      .map(nodeId => nodeById.get(nodeId))
+      .filter((node): node is NonNullable<typeof node> => Boolean(node))
+  }, [focusContext, nodeById])
 
   return (
     <section className="panel graph-panel">
@@ -71,6 +97,9 @@ export function GraphPane(props: GraphPaneProps): JSX.Element {
             const from = nodePositions.get(edge.from)
             const to = nodePositions.get(edge.to)
             if (!from || !to) return null
+            const edgeId = graphEdgeId(edge, idx)
+            const isFocusActive = Boolean(props.focusedNodeId)
+            const isHighlighted = focusContext?.highlightedEdgeIds.has(edgeId) ?? false
             return (
               <line
                 key={`${edge.from}-${edge.to}-${idx}`}
@@ -78,7 +107,12 @@ export function GraphPane(props: GraphPaneProps): JSX.Element {
                 y1={from.y}
                 x2={to.x}
                 y2={to.y}
-                className={`graph-edge ${edge.unresolved ? 'edge-error' : ''}`}
+                className={[
+                  'graph-edge',
+                  edge.unresolved ? 'edge-error' : '',
+                  isHighlighted ? 'is-highlighted' : '',
+                  isFocusActive && !isHighlighted ? 'is-dimmed' : ''
+                ].join(' ').trim()}
               />
             )
           })}
@@ -86,6 +120,9 @@ export function GraphPane(props: GraphPaneProps): JSX.Element {
           {nodes.map(node => {
             const pos = nodePositions.get(node.id)
             if (!pos) return null
+            const isFocused = props.focusedNodeId === node.id
+            const isNeighbor = !isFocused && (focusContext?.highlightedNodeIds.has(node.id) ?? false)
+            const isDimmed = Boolean(props.focusedNodeId) && !isFocused && !isNeighbor
             return (
               <g key={node.id} transform={`translate(${pos.x}, ${pos.y})`}>
                 <circle
@@ -94,7 +131,10 @@ export function GraphPane(props: GraphPaneProps): JSX.Element {
                     'graph-node',
                     node.nodeType,
                     node.unreachable ? 'unreachable' : '',
-                    node.hasError ? 'has-error' : ''
+                    node.hasError ? 'has-error' : '',
+                    isFocused ? 'is-focused' : '',
+                    isNeighbor ? 'is-neighbor' : '',
+                    isDimmed ? 'is-dimmed' : ''
                   ].join(' ').trim()}
                   onClick={() => props.onOpenNode(node.id)}
                 />
@@ -103,6 +143,41 @@ export function GraphPane(props: GraphPaneProps): JSX.Element {
             )
           })}
         </svg>
+
+        <div className="graph-context">
+          <section className="graph-links-panel">
+            <h3>Incoming</h3>
+            {props.focusedNodeId == null ? (
+              <p className="empty-message">Place cursor inside a section to focus links.</p>
+            ) : incomingNodes.length === 0 ? (
+              <p className="empty-message">No incoming links.</p>
+            ) : (
+              <ul className="graph-links-list">
+                {incomingNodes.map(node => (
+                  <li key={`incoming-${node.id}`}>
+                    <button type="button" className="mini-btn" onClick={() => props.onOpenNode(node.id)}>{node.label}</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section className="graph-links-panel">
+            <h3>Outgoing</h3>
+            {props.focusedNodeId == null ? (
+              <p className="empty-message">Place cursor inside a section to focus links.</p>
+            ) : outgoingNodes.length === 0 ? (
+              <p className="empty-message">No outgoing links.</p>
+            ) : (
+              <ul className="graph-links-list">
+                {outgoingNodes.map(node => (
+                  <li key={`outgoing-${node.id}`}>
+                    <button type="button" className="mini-btn" onClick={() => props.onOpenNode(node.id)}>{node.label}</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
       </div>
     </section>
   )
