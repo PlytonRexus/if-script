@@ -1,0 +1,30 @@
+:root {
+  --font-sans: "Avenir Next", "Segoe UI Variable", "Trebuchet MS", sans-serif;
+  --font-mono: "IBM Plex Mono", "Consolas", "Liberation Mono", monospace;
+
+  --bg-page: radial-gradient(circle at 10% 10%, #ffe5c2 0%, #ffd8b4 35%, #f4eee8 100%);
+  --bg-panel: rgba(255, 255, 255, 0.84);
+  --bg-panel-strong: rgba(255, 255, 255, 0.95);
+  --text-main: #142036;
+  --text-muted: #4a5568;
+  --accent: #db6f35;
+  --accent-2: #147a7e;
+  --warn: #c6522d;
+  --ok: #1f8f57;
+  --border: rgba(20, 32, 54, 0.16);
+  --shadow: 0 8px 24px rgba(12, 24, 48, 0.12);
+}
+
+body[data-theme='night'] {
+  --bg-page: radial-gradient(circle at 20% 20%, #22395b 0%, #1a2b43 42%, #0e1827 100%);
+  --bg-panel: rgba(13, 23, 38, 0.82);
+  --bg-panel-strong: rgba(13, 23, 38, 0.96);
+  --text-main: #f3f5f9;
+  --text-muted: #c6d1e2;
+  --accent: #ff9f5a;
+  --accent-2: #58d0d5;
+  --warn: #ff8c6a;
+  --ok: #5ddf9d;
+  --border: rgba(255, 255, 255, 0.18);
+  --shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+}
