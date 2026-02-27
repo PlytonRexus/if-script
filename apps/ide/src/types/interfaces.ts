@@ -71,6 +71,13 @@ export interface VariableCatalogEntry {
   defaultValue?: unknown
 }
 
+export interface VariablePreset {
+  id: string
+  name: string
+  values: Record<string, unknown>
+  updatedAt: string
+}
+
 export interface ParseWorkerRequest {
   workspaceSnapshot: Record<string, string>
   entryFile: string
@@ -87,6 +94,7 @@ export interface ParseWorkerResponse {
   graph: StoryGraph
   sectionIndex: SectionIndexEntry[]
   variableCatalog: VariableCatalogEntry[]
+  sectionVariableNamesBySerial: Record<number, string[]>
   timings: {
     parseMs: number
     analyzeMs: number

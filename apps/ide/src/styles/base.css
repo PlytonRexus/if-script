@@ -102,6 +102,11 @@ button {
   font-size: 0.8rem;
 }
 
+.mini-btn.active {
+  border-color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 26%, var(--bg-panel-strong) 74%);
+}
+
 .workspace-layout {
   flex: 1;
   min-height: 0;
@@ -251,6 +256,19 @@ button {
   padding-bottom: 0.5rem;
 }
 
+.preview-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.preview-follow-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+}
+
 .preview-message {
   margin: 0;
   padding: 0.45rem 0.75rem;
@@ -287,6 +305,48 @@ button {
   font-size: 0.76rem;
 }
 
+.preview-editor-mode {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.preview-seed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.preview-show-all-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+}
+
+.preview-presets {
+  display: grid;
+  gap: 0.35rem;
+  grid-template-columns: minmax(100px, 1fr) auto minmax(110px, 1fr) auto auto;
+}
+
+.preview-preset-input,
+.preview-preset-select,
+.preview-var-input,
+.preview-var-json-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text-main);
+  padding: 0.35rem 0.45rem;
+  font-size: 0.74rem;
+}
+
+.preview-preset-select {
+  min-width: 0;
+}
+
 .preview-seed-input {
   width: 100%;
   min-height: 90px;
@@ -300,6 +360,13 @@ button {
   padding: 0.45rem;
 }
 
+.preview-seed-error-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .preview-seed-error {
   margin: 0;
   font-size: 0.72rem;
@@ -310,6 +377,79 @@ button {
   margin: 0;
   font-size: 0.7rem;
   color: var(--text-muted);
+}
+
+.preview-variable-list {
+  display: grid;
+  gap: 0.4rem;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 0.15rem;
+}
+
+.preview-variable-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem;
+  display: grid;
+  gap: 0.35rem;
+  background: color-mix(in srgb, var(--bg-panel) 86%, var(--accent) 14%);
+}
+
+.preview-variable-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.preview-variable-meta strong {
+  font-size: 0.76rem;
+}
+
+.preview-type-badge,
+.preview-var-origin {
+  font-size: 0.67rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.08rem 0.38rem;
+  color: var(--text-muted);
+}
+
+.preview-var-origin {
+  background: color-mix(in srgb, var(--bg-panel-strong) 82%, var(--accent-2) 18%);
+}
+
+.preview-variable-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem;
+  align-items: start;
+}
+
+.preview-boolean-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+}
+
+.preview-var-json-wrap {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.preview-var-json-input {
+  min-height: 58px;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.preview-var-json-error {
+  margin: 0;
+  font-size: 0.68rem;
+  color: var(--warn);
 }
 
 .preview-host {
@@ -599,6 +739,7 @@ button {
 @media (max-width: 1180px) {
   .sidebar,
   .editor-pane,
+  .preview-panel,
   .diagnostics-panel,
   .runtime-events,
   .graph-panel {
@@ -618,6 +759,14 @@ button {
   }
 
   .graph-context {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-presets {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .preview-variable-controls {
     grid-template-columns: 1fr;
   }
 }

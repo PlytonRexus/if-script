@@ -64,6 +64,7 @@ interface IdeState {
   graph: StoryGraph
   sectionIndex: SectionIndexEntry[]
   variableCatalog: VariableCatalogEntry[]
+  sectionVariableNamesBySerial: Record<number, string[]>
   parseStatus: 'idle' | 'running' | 'error' | 'ok'
   parseRequestId: number
   parseTimings: { parseMs: number, analyzeMs: number, totalMs: number }
@@ -84,6 +85,7 @@ interface IdeState {
     graph: StoryGraph
     sectionIndex: SectionIndexEntry[]
     variableCatalog: VariableCatalogEntry[]
+    sectionVariableNamesBySerial: Record<number, string[]>
     parseStatus: IdeState['parseStatus']
     parseRequestId: number
     timings: IdeState['parseTimings']
@@ -111,6 +113,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
   graph: { nodes: [], edges: [], startNodeId: null, deadEnds: [] },
   sectionIndex: [],
   variableCatalog: [],
+  sectionVariableNamesBySerial: {},
   parseStatus: 'idle',
   parseRequestId: 0,
   parseTimings: { parseMs: 0, analyzeMs: 0, totalMs: 0 },
@@ -133,6 +136,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
       graph: { nodes: [], edges: [], startNodeId: null, deadEnds: [] },
       sectionIndex: [],
       variableCatalog: [],
+      sectionVariableNamesBySerial: {},
       parseStatus: 'idle',
       runtimeEvents: []
     })
@@ -250,13 +254,14 @@ export const useIdeStore = create<IdeState>((set, get) => ({
     }))
   },
 
-  setDiagnosticsGraph: ({ diagnostics, graph, sectionIndex, variableCatalog, parseStatus, parseRequestId, timings }) => {
+  setDiagnosticsGraph: ({ diagnostics, graph, sectionIndex, variableCatalog, sectionVariableNamesBySerial, parseStatus, parseRequestId, timings }) => {
     if (parseRequestId < get().parseRequestId) return
     set({
       diagnostics,
       graph,
       sectionIndex,
       variableCatalog,
+      sectionVariableNamesBySerial,
       parseStatus,
       parseRequestId,
       parseTimings: timings

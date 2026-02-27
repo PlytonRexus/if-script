@@ -38,7 +38,12 @@ test('layout changes persist across reload and reset restores default', async ({
 
   const header = graphTile.locator('.panel-header')
   await expect(header).toBeVisible()
-  await header.dragTo(page.locator('.workspace-grid [data-panel-id="editor"] .panel-header'))
+  const headerBox = await header.boundingBox()
+  expect(headerBox).not.toBeNull()
+  await page.mouse.move((headerBox?.x ?? 0) + (headerBox?.width ?? 0) / 2, (headerBox?.y ?? 0) + (headerBox?.height ?? 0) / 2)
+  await page.mouse.down()
+  await page.mouse.move((headerBox?.x ?? 0) + (headerBox?.width ?? 0) / 2 + 180, (headerBox?.y ?? 0) + (headerBox?.height ?? 0) / 2 + 120, { steps: 10 })
+  await page.mouse.up()
 
   const resizeHandle = graphTile.locator('.react-resizable-handle-se')
   await expect(resizeHandle).toBeVisible()
@@ -74,4 +79,19 @@ test('mobile viewport keeps stacked static layout', async ({ page }) => {
   await expect(page.locator('.workspace-stack')).toBeVisible({ timeout: 20000 })
   await expect(page.locator('.workspace-grid')).toHaveCount(0)
   await expect(page.locator('.workspace-stack [data-panel-id]')).toHaveCount(7)
+})
+
+test('preview auto-follow toggle defaults off and persists per workspace', async ({ page }) => {
+  await openIde(page)
+  const toggle = page.getByLabel('Auto-follow')
+  await expect(toggle).toBeVisible({ timeout: 20000 })
+  await expect(toggle).not.toBeChecked()
+
+  await toggle.check()
+  await expect(toggle).toBeChecked()
+  await page.waitForTimeout(450)
+  await page.reload()
+
+  const toggleAfterReload = page.getByLabel('Auto-follow')
+  await expect(toggleAfterReload).toBeChecked()
 })

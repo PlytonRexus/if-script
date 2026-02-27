@@ -2,6 +2,7 @@
 import IFScript from 'if-script-core'
 import { analyzeStory } from '../analyzer/check'
 import { buildStoryGraph } from '../graph/buildStoryGraph'
+import { buildSectionVariableNamesBySerial, extractVariableNames, visitSectionNodes } from './variableUsage'
 import type {
   IdeDiagnostic,
   InferredVariableType,
@@ -23,59 +24,6 @@ function parserErrorToDiagnostic(err: any, fallbackFile: string): IdeDiagnostic 
     message: String(err?.message ?? 'Unknown parser error'),
     hint: err?.hint ? String(err.hint) : null,
     source: 'parser'
-  }
-}
-
-function collectNodes(nodes: any[], visit: (node: any) => void): void {
-  if (!Array.isArray(nodes)) return
-  nodes.forEach(node => collectNode(node, visit))
-}
-
-function collectNode(node: any, visit: (node: any) => void): void {
-  if (!node) return
-  visit(node)
-
-  const klass = node._class
-  if (klass === 'ConditionalBlock') {
-    collectNode(node.cond, visit)
-    collectNode(node.then, visit)
-    collectNodes(node.ifBlock, visit)
-    collectNode(node.else, visit)
-    collectNodes(node.elseBlock, visit)
-    return
-  }
-
-  if (klass === 'Loop') {
-    collectNode(node.condition, visit)
-    collectNodes(node.body, visit)
-    return
-  }
-
-  if (klass === 'FunctionDef') {
-    collectNodes(node.body, visit)
-    return
-  }
-
-  if (klass === 'Choice') {
-    collectNodes(node.text, visit)
-    collectNode(node.when, visit)
-    collectNodes(node.actions, visit)
-    return
-  }
-
-  if (klass === 'Action') {
-    collectNode(node.left, visit)
-    collectNode(node.right, visit)
-    return
-  }
-
-  if (klass === 'FunctionCall') {
-    collectNodes(node.args, visit)
-    return
-  }
-
-  if (klass === 'ArrayLiteral') {
-    collectNodes(node.elements, visit)
   }
 }
 
@@ -144,16 +92,6 @@ function mergeTypes(current: InferredVariableType, next: InferredVariableType): 
   return 'unknown'
 }
 
-function extractVariableNames(input: unknown): string[] {
-  if (typeof input === 'string' && input.trim() !== '') return [input]
-  if (Array.isArray(input)) return input.flatMap(entry => extractVariableNames(entry))
-  if (!input || typeof input !== 'object') return []
-  const node = input as any
-  if (typeof node.symbol === 'string' && node.symbol.trim() !== '') return [node.symbol]
-  if (typeof node.name === 'string' && node.name.trim() !== '') return [node.name]
-  return []
-}
-
 function buildVariableCatalog(story: any): VariableCatalogEntry[] {
   const catalog = new Map<string, VariableCatalogEntry>()
 
@@ -183,7 +121,7 @@ function buildVariableCatalog(story: any): VariableCatalogEntry[] {
   })
 
   ;(story.sections ?? []).forEach((section: any) => {
-    collectNodes(section?.text ?? [], (node) => {
+    visitSectionNodes(section, (node) => {
       if (node?._class === 'Action' && node.type === 'assign') {
         const names = extractVariableNames(node.left)
         names.forEach(name => mergeVariable(name, inferTypeFromNode(node.right)))
@@ -230,6 +168,7 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
     const graph = buildStoryGraph(story)
     const sectionIndex = buildSectionIndex(story, request.entryFile)
     const variableCatalog = buildVariableCatalog(story)
+    const sectionVariableNamesBySerial = buildSectionVariableNamesBySerial(story)
     const analyzeMs = performance.now() - analyzeStart
 
     const payload: ParseWorkerResponse = {
@@ -240,6 +179,7 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
       graph,
       sectionIndex,
       variableCatalog,
+      sectionVariableNamesBySerial,
       timings: {
         parseMs,
         analyzeMs,
@@ -262,6 +202,7 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
       },
       sectionIndex: [],
       variableCatalog: [],
+      sectionVariableNamesBySerial: {},
       timings: {
         parseMs: 0,
         analyzeMs: 0,

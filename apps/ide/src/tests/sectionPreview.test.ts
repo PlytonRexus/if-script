@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyDefaultsToVariables,
   buildSectionPreviewStartOptions,
   buildVariableOverridesTemplate,
+  buildVisibleVariableCatalog,
+  buildVariablePreset,
   parseVariableOverridesJson,
+  randomizeVariables,
+  removeOverrideVariables,
+  removeVariablePreset,
+  replaceOverrideValue,
   resolveSectionAtCursor
 } from '../preview/sectionPreview'
 
@@ -64,5 +71,56 @@ describe('section preview utilities', () => {
       profile: {},
       known: true
     })
+  })
+
+  it('filters visible catalog to section-relevant names + defaults', () => {
+    const visible = buildVisibleVariableCatalog([
+      { name: 'hp', inferredType: 'number' },
+      { name: 'name', inferredType: 'string' },
+      { name: 'gold', inferredType: 'number', defaultValue: 5 }
+    ], ['hp'], false)
+
+    expect(visible.map(entry => entry.name)).toEqual(['hp', 'gold'])
+  })
+
+  it('updates visible variable values through helper operations', () => {
+    const base = { hp: 3, name: 'Mina', hidden: true }
+    const replaced = replaceOverrideValue(base, 'hp', 10)
+    expect(replaced).toEqual({ hp: 10, name: 'Mina', hidden: true })
+
+    const reset = applyDefaultsToVariables(replaced, [
+      { name: 'hp', inferredType: 'number' },
+      { name: 'name', inferredType: 'string', defaultValue: 'Default' }
+    ])
+    expect(reset).toEqual({ hp: 0, name: 'Default', hidden: true })
+
+    const cleared = removeOverrideVariables(reset, ['hp', 'name'])
+    expect(cleared).toEqual({ hidden: true })
+  })
+
+  it('randomizes visible variables while preserving unaffected keys', () => {
+    const result = randomizeVariables({ fixed: 'x' }, [
+      { name: 'hp', inferredType: 'number' },
+      { name: 'name', inferredType: 'string' },
+      { name: 'known', inferredType: 'boolean' },
+      { name: 'flags', inferredType: 'array' },
+      { name: 'profile', inferredType: 'object' }
+    ])
+
+    expect(result.fixed).toBe('x')
+    expect(typeof result.hp).toBe('number')
+    expect(typeof result.name).toBe('string')
+    expect(typeof result.known).toBe('boolean')
+    expect(Array.isArray(result.flags)).toBeTruthy()
+    expect(result.profile).toEqual({})
+  })
+
+  it('builds and removes named presets', () => {
+    const preset = buildVariablePreset('Combat', { hp: 10 })
+    expect(preset.name).toBe('Combat')
+    expect(preset.values).toEqual({ hp: 10 })
+
+    const removed = removeVariablePreset([preset], preset.id)
+    expect(removed).toEqual([])
   })
 })
