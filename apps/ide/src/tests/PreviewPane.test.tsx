@@ -67,6 +67,7 @@ function renderPreviewPane(input?: {
       onTogglePreviewPin={() => {}}
       playtestNonce={0}
       onRuntimeEvent={() => {}}
+      onRuntimeDebugSnapshot={() => {}}
     />
   )
 }

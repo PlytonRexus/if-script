@@ -56,4 +56,34 @@ describe('analyzeStory', () => {
       sourceSectionSerial: 1
     })
   })
+
+  it('adds quick-fix metadata for unresolved scene first target', () => {
+    const story = {
+      settings: { startAt: 'Intro' },
+      sections: [
+        {
+          serial: 1,
+          settings: { title: 'Intro' },
+          text: []
+        }
+      ],
+      scenes: [
+        {
+          serial: 7,
+          name: 'Act I',
+          first: 'MissingSection'
+        }
+      ],
+      functions: []
+    }
+
+    const diagnostics = analyzeStory(story, '/workspace/main.if')
+    const unresolved = diagnostics.find(item => item.code === 'SCENE_FIRST_UNRESOLVED')
+
+    expect(unresolved?.data).toEqual({
+      kind: 'scene_first_unresolved',
+      target: 'MissingSection',
+      sourceSceneSerial: 7
+    })
+  })
 })

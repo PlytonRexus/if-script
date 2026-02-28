@@ -1,3 +1,5 @@
+import type { PanelId } from '../types/interfaces'
+
 interface TopBarProps {
   projectName: string
   parseStatus: 'idle' | 'running' | 'error' | 'ok'
@@ -15,6 +17,9 @@ interface TopBarProps {
   onToggleTheme: () => void
   onCommandPalette: () => void
   onResetLayout: () => void
+  panelToggleItems: Array<{ id: PanelId, label: string, visible: boolean }>
+  onTogglePanel: (panelId: PanelId) => void
+  onShowAllPanels: () => void
 }
 
 export function TopBar(props: TopBarProps): JSX.Element {
@@ -44,6 +49,19 @@ export function TopBar(props: TopBarProps): JSX.Element {
         <button onClick={props.onResetLayout}>Reset Layout</button>
         <button onClick={props.onToggleTheme}>Theme</button>
         <button onClick={props.onCommandPalette}>Palette</button>
+        <div className="panel-toggle-group" aria-label="Panel visibility controls">
+          <span>Panels</span>
+          {props.panelToggleItems.map((item) => (
+            <button
+              key={item.id}
+              className={`mini-btn${item.visible ? ' active' : ''}`}
+              onClick={() => props.onTogglePanel(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+          <button className="mini-btn" onClick={props.onShowAllPanels}>Show all</button>
+        </div>
       </div>
     </header>
   )

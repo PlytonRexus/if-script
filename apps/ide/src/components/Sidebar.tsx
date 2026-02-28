@@ -1,22 +1,25 @@
 import { useMemo, useState } from 'react'
-import type { SectionIndexEntry, StoryGraph, WorkspaceFile } from '../types/interfaces'
+import type { SceneIndexEntry, SectionIndexEntry, StoryGraph, WorkspaceFile } from '../types/interfaces'
 
-type SidebarMode = 'files' | 'sections'
+type SidebarMode = 'files' | 'sections' | 'scenes'
 
 interface SidebarProps {
   files: WorkspaceFile[]
   activeFilePath: string
   rootFile: string
   sectionIndex: SectionIndexEntry[]
+  sceneIndex: SceneIndexEntry[]
   graph: StoryGraph
   onOpenFile: (path: string) => void
   onOpenSection: (section: SectionIndexEntry) => void
+  onOpenScene: (scene: SceneIndexEntry) => void
   onSetRootFile: (path: string) => void
 }
 
 export function Sidebar(props: SidebarProps): JSX.Element {
   const [mode, setMode] = useState<SidebarMode>('files')
   const [sectionQuery, setSectionQuery] = useState('')
+  const [sceneQuery, setSceneQuery] = useState('')
 
   const sectionState = useMemo(() => {
     const graphNodeById = new Map(props.graph.nodes.map(node => [node.id, node]))
@@ -43,11 +46,24 @@ export function Sidebar(props: SidebarProps): JSX.Element {
     })
   }, [sectionQuery, sectionState])
 
+  const visibleScenes = useMemo(() => {
+    const query = sceneQuery.trim().toLowerCase()
+    if (!query) return props.sceneIndex
+
+    return props.sceneIndex.filter(scene => {
+      const path = scene.file.replace('/workspace/', '').toLowerCase()
+      const firstTarget = String(scene.first ?? '').toLowerCase()
+      return scene.name.toLowerCase().includes(query) || path.includes(query) || firstTarget.includes(query)
+    })
+  }, [props.sceneIndex, sceneQuery])
+
   return (
     <aside className="sidebar panel">
       <div className="panel-header">
         <h2>Workspace</h2>
-        <span>{mode === 'files' ? `${props.files.length} files` : `${props.sectionIndex.length} sections`}</span>
+        <span>
+          {mode === 'files' ? `${props.files.length} files` : mode === 'sections' ? `${props.sectionIndex.length} sections` : `${props.sceneIndex.length} scenes`}
+        </span>
       </div>
 
       <div className="sidebar-modes" role="tablist" aria-label="Workspace view mode">
@@ -65,6 +81,13 @@ export function Sidebar(props: SidebarProps): JSX.Element {
         >
           Sections
         </button>
+        <button
+          type="button"
+          className={['mini-btn', mode === 'scenes' ? 'active' : ''].join(' ').trim()}
+          onClick={() => setMode('scenes')}
+        >
+          Scenes
+        </button>
       </div>
 
       {mode === 'sections' ? (
@@ -74,6 +97,16 @@ export function Sidebar(props: SidebarProps): JSX.Element {
             placeholder="Filter sections..."
             value={sectionQuery}
             onChange={(event) => setSectionQuery(event.currentTarget.value)}
+          />
+        </div>
+      ) : null}
+      {mode === 'scenes' ? (
+        <div className="sidebar-section-filter">
+          <input
+            type="text"
+            placeholder="Filter scenes..."
+            value={sceneQuery}
+            onChange={(event) => setSceneQuery(event.currentTarget.value)}
           />
         </div>
       ) : null}
@@ -101,7 +134,7 @@ export function Sidebar(props: SidebarProps): JSX.Element {
             </li>
           ))}
         </ul>
-      ) : (
+      ) : mode === 'sections' ? (
         <ul className="section-list">
           {visibleSections.length === 0 ? <li><p className="empty-message">No matching sections.</p></li> : null}
           {visibleSections.map(({ section, unreachable, deadEnd }) => (
@@ -117,6 +150,29 @@ export function Sidebar(props: SidebarProps): JSX.Element {
                 <span className="section-badges">
                   {unreachable ? <span className="section-badge warn">unreachable</span> : null}
                   {deadEnd ? <span className="section-badge warn">dead-end</span> : null}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="section-list">
+          {visibleScenes.length === 0 ? <li><p className="empty-message">No matching scenes.</p></li> : null}
+          {visibleScenes.map((scene) => (
+            <li key={`scene:${scene.serial}:${scene.file}:${scene.line}`}>
+              <button
+                type="button"
+                className={['section-item', props.activeFilePath === scene.file ? 'active' : ''].join(' ').trim()}
+                onClick={() => props.onOpenScene(scene)}
+                title={`${scene.file}:${scene.line}`}
+              >
+                <span className="section-title">{scene.name}</span>
+                <span className="section-path">{scene.file.replace('/workspace/', '')}:{scene.line}</span>
+                <span className="section-badges">
+                  <span className="section-badge">{scene.sections.length} sections</span>
+                  {scene.hasAmbience ? <span className="section-badge">audio</span> : null}
+                  {scene.sceneTransition !== 'cut' ? <span className="section-badge">{scene.sceneTransition}</span> : null}
+                  {!scene.firstResolved ? <span className="section-badge warn">first unresolved</span> : null}
                 </span>
               </button>
             </li>

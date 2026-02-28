@@ -4,6 +4,7 @@ interface ShortcutHandlers {
   onCommandPalette: () => void
   onQuickOpenFiles: () => void
   onQuickOpenSections: () => void
+  onQuickOpenScenes: () => void
   onSave: () => void
   onPlaytest: () => void
 }
@@ -27,6 +28,11 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers): void {
       if (hasPrimaryMod && event.shiftKey && key === 'o') {
         event.preventDefault()
         handlers.onQuickOpenSections()
+      }
+
+      if (hasPrimaryMod && event.shiftKey && key === 'l') {
+        event.preventDefault()
+        handlers.onQuickOpenScenes()
       }
 
       if (hasPrimaryMod && key === 's') {

@@ -14,6 +14,7 @@ import {
   serializeVariableOverridesJson
 } from '../preview/sectionPreview'
 import type {
+  RuntimeDebugCategory,
   RuntimeEventEntry,
   SectionIndexEntry,
   VariableCatalogEntry,
@@ -31,6 +32,10 @@ const FORWARDED_EVENTS = [
   'timer_started',
   'timer_elapsed',
   'timer_stopped',
+  'timer_state_changed',
+  'scene_resolved',
+  'audio_state_changed',
+  'audio_channel_event',
   'turn_changed',
   'choice_consumed',
   'save_written',
@@ -59,6 +64,7 @@ interface PreviewPaneProps {
   onTogglePreviewPin: () => void
   playtestNonce: number
   onRuntimeEvent: (entry: RuntimeEventEntry) => void
+  onRuntimeDebugSnapshot: (snapshot: unknown | null) => void
 }
 
 function hasOwnValue(input: Record<string, unknown>, name: string): boolean {
@@ -86,6 +92,29 @@ function isMixedTypeVariable(variable: VariableCatalogEntry): boolean {
   return concrete.length > 1
 }
 
+function categoryForEvent(eventName: string): RuntimeDebugCategory {
+  if (eventName.startsWith('audio_')) return 'audio'
+  if (eventName.startsWith('timer_')) return 'timer'
+  if (eventName.includes('scene')) return 'scene'
+  if (eventName.startsWith('save_')) return 'save'
+  if (eventName === 'error_raised') return 'error'
+  if (eventName === 'session_started') return 'system'
+  return 'engine'
+}
+
+function summaryForEvent(eventName: string, payload: any): string {
+  if (eventName === 'scene_changed') return `Scene changed to ${payload?.scene?.name ?? 'unknown'}`
+  if (eventName === 'scene_resolved') return payload?.matched ? `Scene resolved: ${payload?.scene?.name ?? 'unknown'}` : 'No scene resolved for current section'
+  if (eventName === 'timer_started') return `${payload?.timerType ?? 'timer'} timer started`
+  if (eventName === 'timer_elapsed') return `${payload?.timerType ?? 'timer'} timer elapsed`
+  if (eventName === 'timer_state_changed') return `${payload?.timerType ?? 'timer'} state: ${payload?.state ?? 'unknown'}`
+  if (eventName === 'audio_state_changed') return `Audio state changed (${payload?.reason ?? 'updated'})`
+  if (eventName === 'audio_channel_event') return `${payload?.channel ?? 'audio'}: ${payload?.event ?? 'event'}`
+  if (eventName === 'error_raised') return String(payload?.message ?? 'Runtime error')
+  if (eventName === 'choice_consumed') return `Choice #${payload?.choiceIndex ?? '?'} consumed`
+  return eventName.replaceAll('_', ' ')
+}
+
 export function PreviewPane(props: PreviewPaneProps): JSX.Element {
   const {
     manifest,
@@ -105,7 +134,8 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
     previewPinned,
     onTogglePreviewPin,
     playtestNonce,
-    onRuntimeEvent
+    onRuntimeEvent,
+    onRuntimeDebugSnapshot
   } = props
   const previewRef = useRef<HTMLDivElement | null>(null)
   const runtimeRef = useRef<any>(null)
@@ -115,7 +145,8 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
     parseStatus,
     focusedSection,
     variableOverrideText,
-    onRuntimeEvent
+    onRuntimeEvent,
+    onRuntimeDebugSnapshot
   })
   const [status, setStatus] = useState('idle')
   const [message, setMessage] = useState('Move the cursor inside a section to mount preview.')
@@ -152,9 +183,10 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
       parseStatus,
       focusedSection,
       variableOverrideText,
-      onRuntimeEvent
+      onRuntimeEvent,
+      onRuntimeDebugSnapshot
     }
-  }, [focusedSection, manifest, onRuntimeEvent, parseStatus, snapshot, variableOverrideText])
+  }, [focusedSection, manifest, onRuntimeDebugSnapshot, onRuntimeEvent, parseStatus, snapshot, variableOverrideText])
 
   useEffect(() => {
     if (!selectedPresetId && variablePresets[0]) {
@@ -232,13 +264,21 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
             current.onRuntimeEvent({
               event: eventName,
               at: new Date().toISOString(),
+              category: categoryForEvent(eventName),
+              summary: summaryForEvent(eventName, payload),
               payload
             })
+            if (typeof runtime.getDebugSnapshot === 'function') {
+              current.onRuntimeDebugSnapshot(runtime.getDebugSnapshot())
+            }
           })
         })
 
         runtime.mount(previewRef.current)
         runtime.start(story, startOptions)
+        if (typeof runtime.getDebugSnapshot === 'function') {
+          current.onRuntimeDebugSnapshot(runtime.getDebugSnapshot())
+        }
 
         if (!cancelled) {
           setStatus('ok')
@@ -248,6 +288,7 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
         if (cancelled) return
         setStatus('error')
         setMessage(String((err as Error)?.message ?? err))
+        latestRef.current.onRuntimeDebugSnapshot(null)
       }
     }
 

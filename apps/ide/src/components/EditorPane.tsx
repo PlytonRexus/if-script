@@ -6,8 +6,8 @@ import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
 import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
-import { IF_SCRIPT_LANGUAGE_ID, registerIfScriptLanguage, setIfScriptCompletionContext } from '../monaco/ifLanguage'
-import type { IdeDiagnostic, WorkspaceFile } from '../types/interfaces'
+import { IF_SCRIPT_LANGUAGE_ID, registerIfScriptLanguage, setIfScriptAuthoringSchema, setIfScriptCompletionContext } from '../monaco/ifLanguage'
+import type { AuthoringSchema, IdeDiagnostic, WorkspaceFile } from '../types/interfaces'
 
 const monacoEnv = self as typeof self & {
   MonacoEnvironment?: {
@@ -39,11 +39,20 @@ interface EditorPaneProps {
   file: WorkspaceFile | null
   diagnostics: IdeDiagnostic[]
   parseStatus: 'idle' | 'running' | 'error' | 'ok'
+  authoringSchema: AuthoringSchema | null
   sectionTitles: string[]
   variableNames: string[]
   cursorTarget: CursorTarget | null
   onCursorChange?: (position: { line: number, col: number }) => void
   onChange: (next: string) => void
+}
+
+const DEPRECATED_SCENE_AUDIO_REPLACEMENTS: Record<string, string> = {
+  '@music': '@sceneAmbience',
+  '@musicVolume': '@sceneAmbienceVolume',
+  '@musicLoop': '@sceneAmbienceLoop',
+  '@musicFadeInMs': '@sceneAmbienceFadeInMs',
+  '@musicFadeOutMs': '@sceneAmbienceFadeOutMs'
 }
 
 function severityToMonaco(monaco: typeof Monaco, severity: IdeDiagnostic['severity']): Monaco.MarkerSeverity {
@@ -90,7 +99,7 @@ export function EditorPane(props: EditorPaneProps): JSX.Element {
     const model = editorRef.current.getModel()
     if (!model) return
 
-    const markers: Monaco.editor.IMarkerData[] = activeDiagnostics.map(d => {
+    const parserMarkers: Monaco.editor.IMarkerData[] = activeDiagnostics.map(d => {
       const line = d.line ?? 1
       const col = d.col ?? 1
       return {
@@ -103,6 +112,23 @@ export function EditorPane(props: EditorPaneProps): JSX.Element {
         code: d.code
       }
     })
+    const deprecatedMarkers: Monaco.editor.IMarkerData[] = []
+    model.getLinesContent().forEach((lineText, idx) => {
+      Object.entries(DEPRECATED_SCENE_AUDIO_REPLACEMENTS).forEach(([deprecated, replacement]) => {
+        const col = lineText.indexOf(deprecated)
+        if (col === -1) return
+        deprecatedMarkers.push({
+          severity: monacoRef.current?.MarkerSeverity.Warning ?? Monaco.MarkerSeverity.Warning,
+          message: `${deprecated} is deprecated. Use ${replacement} instead.`,
+          startLineNumber: idx + 1,
+          endLineNumber: idx + 1,
+          startColumn: col + 1,
+          endColumn: col + deprecated.length + 1,
+          code: `DEPRECATED_PROP:${deprecated}`
+        })
+      })
+    })
+    const markers = [...parserMarkers, ...deprecatedMarkers]
 
     monacoRef.current.editor.setModelMarkers(model, 'ifscript-diagnostics', markers)
   }, [activeDiagnostics, props.file])
@@ -113,7 +139,8 @@ export function EditorPane(props: EditorPaneProps): JSX.Element {
       sectionTitles: props.sectionTitles,
       variableNames: props.variableNames
     })
-  }, [props.parseStatus, props.sectionTitles, props.variableNames])
+    setIfScriptAuthoringSchema(props.authoringSchema)
+  }, [props.authoringSchema, props.parseStatus, props.sectionTitles, props.variableNames])
 
   useEffect(() => {
     if (!props.cursorTarget || !editorRef.current) return

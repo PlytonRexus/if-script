@@ -4,11 +4,12 @@ import { CommandPalette } from '../components/CommandPalette'
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel'
 import { EditorPane } from '../components/EditorPane'
 import { GraphPane } from '../components/GraphPane'
+import { InspectorPane } from '../components/InspectorPane'
+import { PlaytestInspectorPanel } from '../components/PlaytestInspectorPanel'
 import { PreviewPane } from '../components/PreviewPane'
-import { RuntimeEventsPanel } from '../components/RuntimeEventsPanel'
 import { Sidebar } from '../components/Sidebar'
 import { TopBar } from '../components/TopBar'
-import { DESKTOP_GRID_COLUMNS, DESKTOP_GRID_ROW_HEIGHT, PANEL_IDS, PANEL_LAYOUT_VERSION, deserializeLayout, fromGridLayout, getDefaultDesktopLayout, isDesktopViewport, serializeLayout, toGridLayout } from '../layout/panelLayout'
+import { DESKTOP_GRID_COLUMNS, DESKTOP_GRID_ROW_HEIGHT, PANEL_IDS, PANEL_LAYOUT_VERSION, deserializeLayout, fromGridLayout, getDefaultDesktopLayout, getDefaultPanelVisibility, isDesktopViewport, normalizePanelVisibility, serializeLayout, toGridLayout, type PanelVisibilityState } from '../layout/panelLayout'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { idbGet, idbSet } from '../lib/indexedDb'
 import { openWorkspaceFromDirectory, verifyDirectoryPermission, writeWorkspaceToDirectory } from '../lib/fsAccess'
@@ -19,6 +20,8 @@ import { createWorkspaceFromFileMap, useIdeStore } from '../store/workspaceStore
 import type {
   CommandPaletteMode,
   CommandPaletteItem,
+  AdvancedInspectorSelection,
+  RuntimeDebugState,
   IdeDiagnostic,
   PanelId,
   PanelLayoutState,
@@ -36,6 +39,27 @@ const GRID_MARGIN: [number, number] = [12, 12]
 const GRID_CONTAINER_PADDING: [number, number] = [0, 0]
 const DRAG_CANCEL_SELECTOR = 'input,textarea,select,option,button,label,a,.monaco-editor,.graph-controls,.graph-controls *'
 const AutoWidthGridLayout = WidthProvider(GridLayout)
+const TOGGLABLE_PANEL_IDS: PanelId[] = ['inspector', 'preview', 'graph', 'diagnostics', 'runtime', 'timings']
+const PANEL_TOGGLE_LABELS: Record<PanelId, string> = {
+  workspace: 'Workspace',
+  editor: 'Editor',
+  inspector: 'Inspector',
+  preview: 'Preview',
+  graph: 'Graph',
+  diagnostics: 'Diagnostics',
+  runtime: 'Runtime',
+  timings: 'Timings'
+}
+const PANEL_TOGGLE_SHORT_LABELS: Record<PanelId, string> = {
+  workspace: 'Work',
+  editor: 'Edit',
+  inspector: 'Inspect',
+  preview: 'Preview',
+  graph: 'Graph',
+  diagnostics: 'Diag',
+  runtime: 'Runtime',
+  timings: 'Timing'
+}
 
 interface PersistedWorkspace {
   manifest: WorkspaceManifest
@@ -45,6 +69,7 @@ interface PersistedWorkspace {
   theme: 'day' | 'night'
   layoutVersion?: number
   layout?: PanelLayoutState
+  panelVisibility?: Partial<Record<PanelId, boolean>>
   sectionPreviewOverrides?: Record<string, string>
   previewMode?: {
     autoFollowCursor: boolean
@@ -52,6 +77,7 @@ interface PersistedWorkspace {
   }
   previewAutoFollow?: boolean
   sectionVariablePresets?: Record<string, VariablePreset[]>
+  inspectorSelection?: AdvancedInspectorSelection
 }
 
 function fileSnapshot(files: Record<string, WorkspaceFile>): Record<string, string> {
@@ -80,6 +106,11 @@ export function IdePage(): JSX.Element {
   const diagnostics = useIdeStore(state => state.diagnostics)
   const graph = useIdeStore(state => state.graph)
   const sectionIndex = useIdeStore(state => state.sectionIndex)
+  const sceneIndex = useIdeStore(state => state.sceneIndex)
+  const storySettingsIndex = useIdeStore(state => state.storySettingsIndex)
+  const sectionSettingsIndex = useIdeStore(state => state.sectionSettingsIndex)
+  const choiceIndex = useIdeStore(state => state.choiceIndex)
+  const authoringSchema = useIdeStore(state => state.authoringSchema)
   const variableCatalog = useIdeStore(state => state.variableCatalog)
   const sectionVariableNamesBySerial = useIdeStore(state => state.sectionVariableNamesBySerial)
   const parseStatus = useIdeStore(state => state.parseStatus)
@@ -119,7 +150,18 @@ export function IdePage(): JSX.Element {
   const [previewPinnedSectionKey, setPreviewPinnedSectionKey] = useState<string | null>(null)
   const [previewAnchorSectionKey, setPreviewAnchorSectionKey] = useState<string | null>(null)
   const [commandPaletteMode, setCommandPaletteMode] = useState<CommandPaletteMode>('all')
+  const [inspectorSelection, setInspectorSelection] = useState<AdvancedInspectorSelection>({
+    activeTab: 'story',
+    sceneSerial: null,
+    sectionSerial: null,
+    choiceId: null
+  })
+  const [runtimeDebugState, setRuntimeDebugState] = useState<RuntimeDebugState>({
+    snapshot: null,
+    lastUpdatedAt: null
+  })
   const [panelLayout, setPanelLayout] = useState<PanelLayoutState>(() => getDefaultDesktopLayout())
+  const [panelVisibility, setPanelVisibility] = useState<PanelVisibilityState>(() => getDefaultPanelVisibility())
   const [desktopMode, setDesktopMode] = useState<boolean>(() => readDesktopMode())
   const workspaceLayoutRef = useRef<HTMLElement | null>(null)
   const workerRef = useRef<Worker | null>(null)
@@ -133,7 +175,12 @@ export function IdePage(): JSX.Element {
 
   const activeFile = filesMap[activeFilePath] ?? null
   const snapshot = useMemo(() => fileSnapshot(filesMap), [filesMap])
-  const desktopGridLayout = useMemo(() => toGridLayout(panelLayout), [panelLayout])
+  const visiblePanelIds = useMemo(() => {
+    return PANEL_IDS.filter(panelId => panelVisibility[panelId])
+  }, [panelVisibility])
+  const desktopGridLayout = useMemo(() => {
+    return toGridLayout(panelLayout).filter(item => panelVisibility[item.i as PanelId])
+  }, [panelLayout, panelVisibility])
   const cursorFocusedSection = useMemo(() => {
     return resolveSectionAtCursor(sectionIndex, activeFilePath, cursorPosition?.line ?? null)
   }, [activeFilePath, cursorPosition?.line, sectionIndex])
@@ -180,7 +227,7 @@ export function IdePage(): JSX.Element {
     return previewSectionKey ? (sectionVariablePresets[previewSectionKey] ?? []) : []
   }, [previewSectionKey, sectionVariablePresets])
 
-  const persistWorkspace = useCallback((layout: PanelLayoutState) => {
+  const persistWorkspace = useCallback((layout: PanelLayoutState, visibility: PanelVisibilityState) => {
     return idbSet<PersistedWorkspace>(STORAGE_KEY, {
       manifest,
       files: filesMap,
@@ -189,14 +236,16 @@ export function IdePage(): JSX.Element {
       theme,
       layoutVersion: PANEL_LAYOUT_VERSION,
       layout: serializeLayout(layout),
+      panelVisibility: normalizePanelVisibility(visibility),
       sectionPreviewOverrides,
       previewMode: {
         autoFollowCursor: previewAutoFollow,
         pinnedSectionKey: previewPinnedSectionKey
       },
-      sectionVariablePresets
+      sectionVariablePresets,
+      inspectorSelection
     })
-  }, [activeFilePath, filesMap, manifest, previewAutoFollow, previewPinnedSectionKey, recentFilePaths, sectionPreviewOverrides, sectionVariablePresets, theme])
+  }, [activeFilePath, filesMap, inspectorSelection, manifest, previewAutoFollow, previewPinnedSectionKey, recentFilePaths, sectionPreviewOverrides, sectionVariablePresets, theme])
 
   const runCheck = useCallback(() => {
     const worker = workerRef.current
@@ -226,6 +275,11 @@ export function IdePage(): JSX.Element {
         diagnostics: payload.diagnostics,
         graph: payload.graph,
         sectionIndex: payload.sectionIndex,
+        sceneIndex: payload.sceneIndex,
+        storySettingsIndex: payload.storySettingsIndex,
+        sectionSettingsIndex: payload.sectionSettingsIndex,
+        choiceIndex: payload.choiceIndex,
+        authoringSchema: payload.authoringSchema,
         variableCatalog: payload.variableCatalog,
         sectionVariableNamesBySerial: payload.sectionVariableNamesBySerial,
         parseStatus: payload.ok ? (hasErrors ? 'error' : 'ok') : 'error',
@@ -262,6 +316,7 @@ export function IdePage(): JSX.Element {
       const canRestoreLayout = persisted.layoutVersion == null || persisted.layoutVersion === PANEL_LAYOUT_VERSION
       const restoredLayout = canRestoreLayout ? deserializeLayout(persisted.layout) : null
       setPanelLayout(restoredLayout ?? getDefaultDesktopLayout())
+      setPanelVisibility(normalizePanelVisibility(persisted.panelVisibility))
       setSectionPreviewOverrides(persisted.sectionPreviewOverrides ?? {})
       const restoredPreviewMode = persisted.previewMode ?? {
         autoFollowCursor: persisted.previewAutoFollow ?? true,
@@ -271,16 +326,22 @@ export function IdePage(): JSX.Element {
       setPreviewPinnedSectionKey(restoredPreviewMode.pinnedSectionKey ?? null)
       setSectionVariablePresets(persisted.sectionVariablePresets ?? {})
       setPreviewAnchorSectionKey(null)
+      setInspectorSelection(persisted.inspectorSelection ?? {
+        activeTab: 'story',
+        sceneSerial: null,
+        sectionSerial: null,
+        choiceId: null
+      })
     })()
   }, [setRecentFilePaths, setTheme, setWorkspace])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void persistWorkspace(panelLayout)
+      void persistWorkspace(panelLayout, panelVisibility)
     }, 300)
 
     return () => window.clearTimeout(timer)
-  }, [panelLayout, persistWorkspace])
+  }, [panelLayout, panelVisibility, persistWorkspace])
 
   useEffect(() => {
     document.body.dataset.theme = theme
@@ -304,6 +365,15 @@ export function IdePage(): JSX.Element {
   }, [cursorFocusedSection, previewAnchorSectionKey, previewAutoFollow, previewPinnedSectionKey])
 
   useEffect(() => {
+    if (!cursorFocusedSection) return
+    setInspectorSelection(state => ({
+      ...state,
+      activeTab: 'section',
+      sectionSerial: cursorFocusedSection.serial
+    }))
+  }, [cursorFocusedSection?.serial])
+
+  useEffect(() => {
     if (!previewPinnedSectionKey) return
     if (sectionByKey.has(previewPinnedSectionKey)) return
     setPreviewPinnedSectionKey(null)
@@ -325,8 +395,26 @@ export function IdePage(): JSX.Element {
   const resetLayout = useCallback(() => {
     const next = getDefaultDesktopLayout()
     setPanelLayout(next)
-    void persistWorkspace(next)
-  }, [persistWorkspace])
+    void persistWorkspace(next, panelVisibility)
+  }, [panelVisibility, persistWorkspace])
+
+  const togglePanelVisibility = useCallback((panelId: PanelId) => {
+    if (!TOGGLABLE_PANEL_IDS.includes(panelId)) return
+    setPanelVisibility(state => ({
+      ...state,
+      [panelId]: !state[panelId]
+    }))
+  }, [])
+
+  const showAllPanels = useCallback(() => {
+    setPanelVisibility(state => {
+      const next = { ...state }
+      TOGGLABLE_PANEL_IDS.forEach(panelId => {
+        next[panelId] = true
+      })
+      return next
+    })
+  }, [])
 
   const updateFocusedSectionOverrides = useCallback((next: string) => {
     if (!previewSectionKey) return
@@ -416,20 +504,110 @@ export function IdePage(): JSX.Element {
     })
   }, [filesMap, setActiveFile])
 
+  const handleOpenScene = useCallback((scene: { serial: number, file: string, line: number, col: number }) => {
+    if (filesMap[scene.file]) {
+      setActiveFile(scene.file)
+    }
+    setCursorTarget({
+      line: scene.line,
+      col: scene.col,
+      nonce: Date.now()
+    })
+    setInspectorSelection(state => ({
+      ...state,
+      activeTab: 'scene',
+      sceneSerial: scene.serial
+    }))
+  }, [filesMap, setActiveFile])
+
+  const handleOpenRuntimeEventSource = useCallback((event: RuntimeEventEntry) => {
+    const payload = typeof event.payload === 'object' && event.payload !== null
+      ? event.payload as Record<string, unknown>
+      : null
+    if (!payload) return
+
+    const openSceneBySerial = (serial: number): boolean => {
+      const scene = sceneIndex.find(entry => entry.serial === serial)
+      if (!scene) return false
+      handleOpenScene(scene)
+      return true
+    }
+    const openSectionBySerial = (serial: number): boolean => {
+      const section = sectionIndex.find(entry => entry.serial === serial)
+      if (!section) return false
+      handleOpenSection(section)
+      setInspectorSelection(state => ({ ...state, activeTab: 'section', sectionSerial: section.serial }))
+      return true
+    }
+
+    const scenePayload = payload.scene
+    if (typeof payload.sceneSerial === 'number' && openSceneBySerial(payload.sceneSerial)) return
+    if (typeof scenePayload === 'object' && scenePayload !== null) {
+      const serial = (scenePayload as Record<string, unknown>).serial
+      if (typeof serial === 'number' && openSceneBySerial(serial)) return
+    }
+
+    const sectionPayload = payload.section
+    if (typeof payload.sectionSerial === 'number' && openSectionBySerial(payload.sectionSerial)) return
+    if (typeof sectionPayload === 'object' && sectionPayload !== null) {
+      const serial = (sectionPayload as Record<string, unknown>).serial
+      if (typeof serial === 'number' && openSectionBySerial(serial)) return
+    }
+
+    const target = payload.target
+    if (typeof target === 'number' && openSectionBySerial(target)) return
+    if (typeof target === 'string') {
+      const sectionByTitle = sectionIndex.find(entry => entry.title === target)
+      if (sectionByTitle) {
+        handleOpenSection(sectionByTitle)
+        setInspectorSelection(state => ({ ...state, activeTab: 'section', sectionSerial: sectionByTitle.serial }))
+        return
+      }
+      const sceneByName = sceneIndex.find(entry => entry.name === target)
+      if (sceneByName) {
+        handleOpenScene(sceneByName)
+      }
+    }
+  }, [handleOpenScene, handleOpenSection, sceneIndex, sectionIndex])
+
   const handleApplyDiagnosticQuickFix = useCallback((diagnostic: IdeDiagnostic) => {
     const quickFix = diagnostic.data
     const target = quickFix?.target?.trim()
     if (!target) return
-    if (quickFix?.kind !== 'missing_section_target' && quickFix?.kind !== 'start_at_unresolved') return
+    const kind = quickFix?.kind
+    if (kind !== 'missing_section_target' && kind !== 'start_at_unresolved' && kind !== 'missing_scene_target' && kind !== 'scene_first_unresolved') return
+
+    const preferredFile = activeFile?.path && filesMap[activeFile.path] ? activeFile.path : manifest.rootFile
+    if (!filesMap[preferredFile]) return
+
+    if (kind === 'missing_scene_target' || kind === 'scene_first_unresolved') {
+      const existingScene = sceneIndex.find(scene => scene.name === target)
+      if (existingScene) {
+        handleOpenScene(existingScene)
+        return
+      }
+
+      const accepted = window.confirm(`Create missing scene "${target}" in ${preferredFile}?`)
+      if (!accepted) return
+
+      const currentContent = filesMap[preferredFile].content
+      const fallbackSection = sectionIndex[0]?.title ?? 'Prologue'
+      const separator = currentContent.trimEnd().length === 0 ? '' : '\n\n'
+      const scaffold = `scene__\n  @name "${target}"\n  @first "${fallbackSection}"\n  @sections "${fallbackSection}"\n__scene\n`
+      const nextContent = `${currentContent.replace(/\s*$/, '')}${separator}${scaffold}`
+      const line = currentContent.split(/\r?\n/).length + (separator ? 2 : 0)
+      setFileContent(preferredFile, nextContent)
+      setActiveFile(preferredFile)
+      setCursorTarget({ line: Math.max(1, line), col: 1, nonce: Date.now() })
+      setInspectorSelection(state => ({ ...state, activeTab: 'scene' }))
+      return
+    }
 
     const existingSection = sectionIndex.find(section => section.title === target)
     if (existingSection) {
       handleOpenSection(existingSection)
       return
     }
-
-    const preferredFile = activeFile?.path && filesMap[activeFile.path] ? activeFile.path : manifest.rootFile
-    if (!filesMap[preferredFile]) return
 
     const accepted = window.confirm(`Create missing section "${target}" in ${preferredFile}?`)
     if (!accepted) return
@@ -447,7 +625,7 @@ export function IdePage(): JSX.Element {
       col: 1,
       nonce: Date.now()
     })
-  }, [activeFile?.path, filesMap, handleOpenSection, manifest.rootFile, sectionIndex, setActiveFile, setFileContent])
+  }, [activeFile?.path, filesMap, handleOpenScene, handleOpenSection, manifest.rootFile, sceneIndex, sectionIndex, setActiveFile, setFileContent])
 
   const jumpToGraphNode = useCallback((nodeId: string) => {
     if (nodeId.startsWith('section:')) {
@@ -469,11 +647,20 @@ export function IdePage(): JSX.Element {
       }
     }
 
+    if (nodeId.startsWith('scene:')) {
+      const sceneName = nodeId.replace('scene:', '')
+      const sceneMatch = sceneIndex.find(scene => scene.name === sceneName && Boolean(filesMap[scene.file]))
+      if (sceneMatch) {
+        handleOpenScene(sceneMatch)
+        return
+      }
+    }
+
     if (filesMap[manifest.rootFile]) {
       setActiveFile(manifest.rootFile)
       setCursorTarget({ line: 1, col: 1, nonce: Date.now() })
     }
-  }, [filesMap, manifest.rootFile, sectionIndex, setActiveFile])
+  }, [filesMap, handleOpenScene, manifest.rootFile, sceneIndex, sectionIndex, setActiveFile])
 
   const openDirectory = useCallback(async () => {
     try {
@@ -492,11 +679,18 @@ export function IdePage(): JSX.Element {
       setPreviewAutoFollow(true)
       setPreviewPinnedSectionKey(null)
       setPreviewAnchorSectionKey(null)
+      setInspectorSelection({
+        activeTab: 'story',
+        sceneSerial: null,
+        sectionSerial: null,
+        choiceId: null
+      })
+      setRuntimeDebugState({ snapshot: null, lastUpdatedAt: null })
       saveCheckpoint()
     } catch (err) {
       window.alert(String((err as Error).message ?? err))
     }
-  }, [saveCheckpoint, setFsRootHandle, setStorageMode, setWorkspace])
+  }, [saveCheckpoint, setFsRootHandle, setInspectorSelection, setRuntimeDebugState, setStorageMode, setWorkspace])
 
   const writeDirectory = useCallback(async () => {
     try {
@@ -547,13 +741,20 @@ export function IdePage(): JSX.Element {
         setPreviewAutoFollow(true)
         setPreviewPinnedSectionKey(null)
         setPreviewAnchorSectionKey(null)
+        setInspectorSelection({
+          activeTab: 'story',
+          sceneSerial: null,
+          sectionSerial: null,
+          choiceId: null
+        })
+        setRuntimeDebugState({ snapshot: null, lastUpdatedAt: null })
       } catch (err) {
         window.alert(String((err as Error).message ?? err))
       }
     }
 
     input.click()
-  }, [setStorageMode, setWorkspace])
+  }, [setInspectorSelection, setRuntimeDebugState, setStorageMode, setWorkspace])
 
   const exportBundle = useCallback(() => {
     const bundle: WorkspaceBundle = {
@@ -585,8 +786,16 @@ export function IdePage(): JSX.Element {
   }, [activeFile, deleteFile])
 
   const handleDesktopLayoutChange = useCallback((nextLayout: Layout) => {
-    setPanelLayout(fromGridLayout(nextLayout))
-  }, [])
+    const parsed = fromGridLayout(nextLayout)
+    setPanelLayout(current => {
+      const next = { ...current }
+      PANEL_IDS.forEach((panelId) => {
+        if (!panelVisibility[panelId]) return
+        next[panelId] = parsed[panelId]
+      })
+      return next
+    })
+  }, [panelVisibility])
 
   const renderPanel = useCallback((panelId: PanelId): JSX.Element => {
     if (panelId === 'workspace') {
@@ -596,9 +805,11 @@ export function IdePage(): JSX.Element {
           activeFilePath={activeFilePath}
           rootFile={manifest.rootFile}
           sectionIndex={sectionIndex}
+          sceneIndex={sceneIndex}
           graph={graph}
           onOpenFile={setActiveFile}
           onOpenSection={handleOpenSection}
+          onOpenScene={handleOpenScene}
           onSetRootFile={setRootFile}
         />
       )
@@ -610,6 +821,7 @@ export function IdePage(): JSX.Element {
           file={activeFile}
           diagnostics={diagnostics}
           parseStatus={parseStatus}
+          authoringSchema={authoringSchema}
           sectionTitles={sectionTitlesForCompletion}
           variableNames={variableNamesForCompletion}
           cursorTarget={cursorTarget}
@@ -617,6 +829,26 @@ export function IdePage(): JSX.Element {
           onChange={(next) => {
             if (!activeFile) return
             setFileContent(activeFile.path, next)
+          }}
+        />
+      )
+    }
+
+    if (panelId === 'inspector') {
+      return (
+        <InspectorPane
+          snapshot={snapshot}
+          selection={inspectorSelection}
+          storySettingsIndex={storySettingsIndex}
+          sceneIndex={sceneIndex}
+          sectionSettingsIndex={sectionSettingsIndex}
+          choiceIndex={choiceIndex}
+          authoringSchema={authoringSchema}
+          onSelectionChange={setInspectorSelection}
+          onWriteFile={(file, nextContent) => {
+            if (!filesMap[file]) return
+            setFileContent(file, nextContent)
+            setActiveFile(file)
           }}
         />
       )
@@ -643,6 +875,10 @@ export function IdePage(): JSX.Element {
           onTogglePreviewPin={handleTogglePreviewPin}
           playtestNonce={playtestNonce}
           onRuntimeEvent={(entry: RuntimeEventEntry) => addRuntimeEvent(entry)}
+          onRuntimeDebugSnapshot={(snapshotPayload) => setRuntimeDebugState({
+            snapshot: (snapshotPayload as RuntimeDebugState['snapshot']) ?? null,
+            lastUpdatedAt: new Date().toISOString()
+          })}
         />
       )
     }
@@ -656,7 +892,14 @@ export function IdePage(): JSX.Element {
     }
 
     if (panelId === 'runtime') {
-      return <RuntimeEventsPanel events={runtimeEvents} onClear={clearRuntimeEvents} />
+      return (
+        <PlaytestInspectorPanel
+          events={runtimeEvents}
+          debugState={runtimeDebugState}
+          onClear={clearRuntimeEvents}
+          onOpenEventSource={handleOpenRuntimeEventSource}
+        />
+      )
     }
 
     return (
@@ -676,13 +919,21 @@ export function IdePage(): JSX.Element {
     activeFile,
     activeFilePath,
     addRuntimeEvent,
+    authoringSchema,
+    choiceIndex,
     clearRuntimeEvents,
     cursorTarget,
+    filesMap,
     handleApplyDiagnosticQuickFix,
+    handleOpenScene,
+    handleOpenRuntimeEventSource,
     handleOpenSection,
     handleTogglePreviewPin,
+    inspectorSelection,
     diagnostics,
     sectionIndex,
+    sectionSettingsIndex,
+    sceneIndex,
     files,
     focusedOverrideText,
     deleteSectionPreset,
@@ -701,14 +952,18 @@ export function IdePage(): JSX.Element {
     previewPinnedSectionKey,
     previewSection,
     runtimeEvents,
+    runtimeDebugState,
     saveSectionPreset,
+    setInspectorSelection,
     sectionTitlesForCompletion,
     sectionVariableNamesBySerial,
     setActiveFile,
     setCursorPosition,
     setFileContent,
+    setRuntimeDebugState,
     setRootFile,
     snapshot,
+    storySettingsIndex,
     updateFocusedSectionOverrides,
     variableCatalog,
     variableNamesForCompletion
@@ -746,6 +1001,15 @@ export function IdePage(): JSX.Element {
         kind: 'command',
         keywords: ['preview', 'runtime'],
         run: handlePlaytest
+      },
+      {
+        id: 'cmd-open-scenes',
+        title: 'Quick Open Scenes',
+        category: 'Navigation',
+        shortcut: 'Ctrl+Shift+L',
+        kind: 'command',
+        keywords: ['scene', 'open'],
+        run: () => openPalette('scenes')
       },
       {
         id: 'cmd-new-file',
@@ -791,8 +1055,29 @@ export function IdePage(): JSX.Element {
         kind: 'command',
         keywords: ['import', 'bundle'],
         run: () => { void importBundle() }
+      },
+      {
+        id: 'cmd-show-all-panels',
+        title: 'Show All Panels',
+        category: 'Layout',
+        shortcut: 'Palette',
+        kind: 'command',
+        keywords: ['panel', 'layout', 'show'],
+        run: showAllPanels
       }
     ]
+    const panelCommandItems: CommandPaletteItem[] = TOGGLABLE_PANEL_IDS.map((panelId) => {
+      const visible = panelVisibility[panelId]
+      return {
+        id: `cmd-toggle-panel-${panelId}`,
+        title: `${visible ? 'Hide' : 'Show'} ${PANEL_TOGGLE_LABELS[panelId]} Panel`,
+        category: 'Layout',
+        shortcut: 'Palette',
+        kind: 'command',
+        keywords: ['panel', 'layout', panelId, visible ? 'hide' : 'show'],
+        run: () => togglePanelVisibility(panelId)
+      }
+    })
 
     const fileItems: CommandPaletteItem[] = filesByRecency.map((file) => {
       const relative = file.path.replace('/workspace/', '')
@@ -820,13 +1105,27 @@ export function IdePage(): JSX.Element {
       }
     })
 
-    return [...commandItems, ...fileItems, ...sectionItems]
-  }, [exportBundle, filesByRecency, handleNewFile, handleOpenSection, handlePlaytest, importBundle, openDirectory, runCheck, saveLocal, sectionIndex, setActiveFile])
+    const sceneItems: CommandPaletteItem[] = sceneIndex.map((scene) => {
+      const relative = scene.file.replace('/workspace/', '')
+      return {
+        id: `scene:${scene.file}:${scene.line}:${scene.serial}`,
+        title: scene.name,
+        category: `Scene (${relative}:${scene.line})`,
+        shortcut: 'Ctrl+Shift+L',
+        kind: 'scene',
+        keywords: [relative, scene.name, String(scene.first ?? '')],
+        run: () => handleOpenScene(scene)
+      }
+    })
+
+    return [...commandItems, ...panelCommandItems, ...fileItems, ...sectionItems, ...sceneItems]
+  }, [exportBundle, filesByRecency, handleNewFile, handleOpenScene, handleOpenSection, handlePlaytest, importBundle, openDirectory, openPalette, panelVisibility, runCheck, saveLocal, sceneIndex, sectionIndex, setActiveFile, showAllPanels, togglePanelVisibility])
 
   useKeyboardShortcuts({
     onCommandPalette: toggleCommandPalette,
     onQuickOpenFiles: () => openPalette('files'),
     onQuickOpenSections: () => openPalette('sections'),
+    onQuickOpenScenes: () => openPalette('scenes'),
     onSave: saveLocal,
     onPlaytest: handlePlaytest
   })
@@ -850,6 +1149,13 @@ export function IdePage(): JSX.Element {
         onResetLayout={resetLayout}
         onToggleTheme={toggleTheme}
         onCommandPalette={toggleCommandPalette}
+        panelToggleItems={TOGGLABLE_PANEL_IDS.map(panelId => ({
+          id: panelId,
+          label: PANEL_TOGGLE_SHORT_LABELS[panelId],
+          visible: panelVisibility[panelId]
+        }))}
+        onTogglePanel={togglePanelVisibility}
+        onShowAllPanels={showAllPanels}
       />
 
       <main className="workspace-layout" ref={workspaceLayoutRef}>
@@ -868,7 +1174,7 @@ export function IdePage(): JSX.Element {
             draggableCancel={DRAG_CANCEL_SELECTOR}
             onLayoutChange={handleDesktopLayoutChange}
           >
-            {PANEL_IDS.map(panelId => (
+            {visiblePanelIds.map(panelId => (
               <div key={panelId} data-panel-id={panelId} className={`workspace-tile tile-${panelId}`}>
                 {renderPanel(panelId)}
               </div>
@@ -876,7 +1182,7 @@ export function IdePage(): JSX.Element {
           </AutoWidthGridLayout>
         ) : (
           <section className="workspace-stack" data-testid="workspace-stack">
-            {PANEL_IDS.map(panelId => (
+            {visiblePanelIds.map(panelId => (
               <div key={panelId} data-panel-id={panelId} className={`workspace-stack-item stack-${panelId}`}>
                 {renderPanel(panelId)}
               </div>

@@ -118,6 +118,17 @@ function isResolvableSectionRef(target: unknown, serials: Set<number>, titles: S
   return typeof target === 'number' ? serials.has(target) : titles.has(String(target))
 }
 
+function isLikelyMediaPath(value: unknown): boolean {
+  if (typeof value !== 'string') return true
+  const text = value.trim()
+  if (text === '') return false
+  if (/\s/.test(text)) return false
+  if (/^https?:\/\//i.test(text)) return true
+  if (/^\/[\w\-./%]+$/.test(text)) return true
+  if (/^[.]{1,2}\//.test(text)) return true
+  return /^[\w\-./%]+\.[A-Za-z0-9]+$/.test(text)
+}
+
 export function analyzeStory(story: any, inputPath: string): IdeDiagnostic[] {
   const diagnostics: IdeDiagnostic[] = []
 
@@ -196,9 +207,79 @@ export function analyzeStory(story: any, inputPath: string): IdeDiagnostic[] {
     if (first !== undefined && first !== null && first !== '' && !isResolvableSectionRef(first, sectionSerials, sectionTitleSet)) {
       diagnostics.push(makeDiagnostic('error', 'SCENE_FIRST_UNRESOLVED', `Scene "${scene.name || scene.serial}" @first points to unknown section target "${first}".`, {
         file: inputPath,
+        data: {
+          kind: 'scene_first_unresolved',
+          target: String(first),
+          sourceSceneSerial: typeof scene.serial === 'number' ? scene.serial : undefined
+        },
         hint: 'Set scene @first to an existing section serial or title.'
       }))
     }
+  })
+
+  const sectionSceneCount = new Map<string, number>()
+  ;(story.scenes ?? []).forEach((scene: any) => {
+    const refs: unknown[] = []
+    if (scene?.first !== undefined && scene?.first !== null && scene?.first !== '') refs.push(scene.first)
+    if (Array.isArray(scene?.sections)) refs.push(...scene.sections)
+    refs.forEach(ref => {
+      const key = typeof ref === 'number' ? `n:${ref}` : `s:${String(ref)}`
+      sectionSceneCount.set(key, (sectionSceneCount.get(key) ?? 0) + 1)
+    })
+  })
+  sectionSceneCount.forEach((count, key) => {
+    if (count <= 1) return
+    const ref = key.slice(2)
+    diagnostics.push(makeDiagnostic('warning', 'SECTION_IN_MULTIPLE_SCENES', `Section ref "${ref}" appears in ${count} scene definitions.`, {
+      file: inputPath,
+      hint: 'Place each section in a single scene for predictable scene transitions.'
+    }))
+  })
+
+  ;(story.scenes ?? []).forEach((scene: any) => {
+    const refs: unknown[] = []
+    if (scene?.first !== undefined && scene?.first !== null && scene?.first !== '') refs.push(scene.first)
+    if (Array.isArray(scene?.sections)) refs.push(...scene.sections)
+    if (refs.length === 0) {
+      diagnostics.push(makeDiagnostic('warning', 'SCENE_WITHOUT_SECTIONS', `Scene "${scene?.name || scene?.serial}" has no @first/@sections mapping.`, {
+        file: inputPath,
+        hint: 'Set @first and/or @sections so the scene can be resolved during play.'
+      }))
+    }
+  })
+
+  ;(story.settings?.storyAmbience ? [story.settings.storyAmbience] : []).forEach((path: unknown) => {
+    if (isLikelyMediaPath(path)) return
+    diagnostics.push(makeDiagnostic('warning', 'STORY_AMBIENCE_INVALID_PATH', `@storyAmbience path "${String(path)}" may be invalid.`, {
+      file: inputPath,
+      hint: 'Use a URL or project-relative media path without spaces.'
+    }))
+  })
+
+  ;(story.scenes ?? []).forEach((scene: any) => {
+    if (scene?.music !== undefined && scene?.music !== null && !isLikelyMediaPath(scene.music)) {
+      diagnostics.push(makeDiagnostic('warning', 'SCENE_AMBIENCE_INVALID_PATH', `Scene "${scene?.name || scene?.serial}" has invalid @sceneAmbience path "${String(scene.music)}".`, {
+        file: inputPath,
+        hint: 'Use a URL or project-relative media path without spaces.'
+      }))
+    }
+  })
+
+  ;(story.sections ?? []).forEach((section: any) => {
+    if (section?.settings?.ambience !== undefined && section?.settings?.ambience !== null && !isLikelyMediaPath(section.settings.ambience)) {
+      diagnostics.push(makeDiagnostic('warning', 'SECTION_AMBIENCE_INVALID_PATH', `Section ${section?.serial ?? '?'} has invalid @ambience path "${String(section.settings.ambience)}".`, {
+        file: inputPath,
+        hint: 'Use a URL or project-relative media path without spaces.'
+      }))
+    }
+    const sfx = Array.isArray(section?.settings?.sfx) ? section.settings.sfx : []
+    sfx.forEach((entry: unknown) => {
+      if (isLikelyMediaPath(entry)) return
+      diagnostics.push(makeDiagnostic('warning', 'SECTION_SFX_INVALID_PATH', `Section ${section?.serial ?? '?'} has invalid @sfx path "${String(entry)}".`, {
+        file: inputPath,
+        hint: 'Use a URL or project-relative media path without spaces.'
+      }))
+    })
   })
 
   collectChoicesFromStory(story).forEach(({ choice, section }) => {

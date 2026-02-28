@@ -1,4 +1,6 @@
 import type * as Monaco from 'monaco-editor'
+import { FALLBACK_AUTHORING_SCHEMA } from '../authoring/schema'
+import type { AuthoringSchema } from '../types/interfaces'
 
 const languageId = 'ifscript'
 
@@ -13,6 +15,14 @@ const completionContext: CompletionContext = {
   sectionTitles: [],
   variableNames: []
 }
+let schemaContext: AuthoringSchema = FALLBACK_AUTHORING_SCHEMA
+const DEPRECATED_SCENE_AUDIO_REPLACEMENTS: Record<string, string> = {
+  '@music': '@sceneAmbience',
+  '@musicVolume': '@sceneAmbienceVolume',
+  '@musicLoop': '@sceneAmbienceLoop',
+  '@musicFadeInMs': '@sceneAmbienceFadeInMs',
+  '@musicFadeOutMs': '@sceneAmbienceFadeOutMs'
+}
 
 function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b))
@@ -22,6 +32,14 @@ export function setIfScriptCompletionContext(input: CompletionContext): void {
   completionContext.parseStatus = input.parseStatus
   completionContext.sectionTitles = uniqueSorted(input.sectionTitles)
   completionContext.variableNames = uniqueSorted(input.variableNames)
+}
+
+export function setIfScriptAuthoringSchema(input: AuthoringSchema | null | undefined): void {
+  if (!input) {
+    schemaContext = FALLBACK_AUTHORING_SCHEMA
+    return
+  }
+  schemaContext = input
 }
 
 function snippetSuggestions(monaco: typeof Monaco, range: Monaco.IRange): Monaco.languages.CompletionItem[] {
@@ -105,6 +123,31 @@ function variableSuggestions(monaco: typeof Monaco, range: Monaco.IRange): Monac
   }))
 }
 
+function schemaPropertySuggestions(monaco: typeof Monaco, range: Monaco.IRange): Monaco.languages.CompletionItem[] {
+  const out: Monaco.languages.CompletionItem[] = []
+  const contexts = [schemaContext.contexts.story, schemaContext.contexts.scene, schemaContext.contexts.section, schemaContext.contexts.choice]
+  contexts.forEach(context => {
+    context.properties.forEach(prop => {
+      const snippet = prop.type === 'enum' && prop.enumValues && prop.enumValues.length > 0
+        ? `${prop.keyword} "${prop.enumValues[0]}"`
+        : prop.type === 'boolean'
+          ? `${prop.keyword} \${1:true}`
+          : prop.type === 'number'
+            ? `${prop.keyword} \${1:${typeof prop.defaultValue === 'number' ? prop.defaultValue : 1}}`
+            : `${prop.keyword} "\${1:value}"`
+      out.push({
+        label: `${prop.keyword} (${context.title})`,
+        detail: prop.description ?? `${context.title} property`,
+        kind: monaco.languages.CompletionItemKind.Property,
+        insertText: snippet,
+        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+        range
+      })
+    })
+  })
+  return out
+}
+
 export function registerIfScriptLanguage(monaco: typeof Monaco): void {
   if (monaco.languages.getLanguages().some(lang => lang.id === languageId)) return
 
@@ -159,12 +202,75 @@ export function registerIfScriptLanguage(monaco: typeof Monaco): void {
       }
 
       const suggestions = snippetSuggestions(monaco, range)
+      suggestions.push(...schemaPropertySuggestions(monaco, range))
       if (completionContext.parseStatus === 'ok') {
         suggestions.push(...sectionTargetSuggestions(monaco, range))
         suggestions.push(...variableSuggestions(monaco, range))
       }
 
       return { suggestions }
+    }
+  })
+
+  monaco.languages.registerHoverProvider(languageId, {
+    provideHover: (model, position) => {
+      const word = model.getWordAtPosition(position)
+      if (!word) return null
+      const keyword = word.word.startsWith('@') ? word.word : `@${word.word}`
+      const contexts = [schemaContext.contexts.story, schemaContext.contexts.scene, schemaContext.contexts.section, schemaContext.contexts.choice]
+      const prop = contexts.flatMap(context => context.properties).find(entry => entry.keyword === keyword)
+      if (!prop) return null
+      return {
+        range: {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn
+        },
+        contents: [
+          { value: `**${prop.keyword}**` },
+          { value: prop.description ?? 'IF-Script property' },
+          ...(prop.enumValues ? [{ value: `Allowed: ${prop.enumValues.map(v => `\`${v}\``).join(', ')}` }] : [])
+        ]
+      }
+    }
+  })
+
+  monaco.languages.registerCodeActionProvider(languageId, {
+    provideCodeActions: (model, _range, context) => {
+      const actions = context.markers
+        .map(marker => {
+          const rawCode = typeof marker.code === 'string' ? marker.code : typeof marker.code === 'number' ? String(marker.code) : ''
+          if (!rawCode.startsWith('DEPRECATED_PROP:')) return null
+          const deprecated = rawCode.replace('DEPRECATED_PROP:', '')
+          const replacement = DEPRECATED_SCENE_AUDIO_REPLACEMENTS[deprecated]
+          if (!replacement) return null
+          return {
+            title: `Replace ${deprecated} with ${replacement}`,
+            kind: 'quickfix',
+            edit: {
+              edits: [
+                {
+                  resource: model.uri,
+                  textEdit: {
+                    range: {
+                      startLineNumber: marker.startLineNumber,
+                      startColumn: marker.startColumn,
+                      endLineNumber: marker.endLineNumber,
+                      endColumn: marker.endColumn
+                    },
+                    text: replacement
+                  },
+                  versionId: undefined
+                }
+              ]
+            },
+            diagnostics: [marker],
+            isPreferred: true
+          }
+        })
+        .filter((action): action is NonNullable<typeof action> => Boolean(action))
+      return { actions, dispose: () => {} }
     }
   })
 }

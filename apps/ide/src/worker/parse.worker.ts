@@ -2,6 +2,8 @@
 import IFScript from 'if-script-core'
 import { analyzeStory } from '../analyzer/check'
 import { buildStoryGraph } from '../graph/buildStoryGraph'
+import { FALLBACK_AUTHORING_SCHEMA } from '../authoring/schema'
+import { buildChoiceIndex, buildSceneIndex, buildSectionSettingsIndex, buildStorySettingsIndex } from './authoringIndex'
 import { buildSectionVariableNamesBySerial } from './variableUsage'
 import { buildVariableCatalogAndWarnings } from './variableInference'
 import type {
@@ -115,6 +117,14 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
     const variableInferenceDiagnostics = buildVariableInferenceDiagnostics(variableInference.warnings, request.entryFile)
     const diagnostics = [...analyzerDiagnostics, ...variableInferenceDiagnostics]
     const sectionVariableNamesBySerial = buildSectionVariableNamesBySerial(story)
+    const sceneIndex = buildSceneIndex(story, request.entryFile)
+    const storySettingsIndex = buildStorySettingsIndex(story, request.entryFile)
+    const sectionSettingsIndex = buildSectionSettingsIndex(story, request.entryFile)
+    const choiceIndex = buildChoiceIndex(story, request.entryFile)
+    const maybeSchema = typeof (ifs as any).getAuthoringSchema === 'function'
+      ? (ifs as any).getAuthoringSchema()
+      : null
+    const authoringSchema = maybeSchema && typeof maybeSchema === 'object' ? maybeSchema : FALLBACK_AUTHORING_SCHEMA
     const analyzeMs = performance.now() - analyzeStart
 
     const payload: ParseWorkerResponse = {
@@ -124,6 +134,11 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
       diagnostics,
       graph,
       sectionIndex,
+      sceneIndex,
+      storySettingsIndex,
+      sectionSettingsIndex,
+      choiceIndex,
+      authoringSchema,
       variableCatalog,
       sectionVariableNamesBySerial,
       timings: {
@@ -147,6 +162,11 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
         deadEnds: []
       },
       sectionIndex: [],
+      sceneIndex: [],
+      storySettingsIndex: null,
+      sectionSettingsIndex: [],
+      choiceIndex: [],
+      authoringSchema: FALLBACK_AUTHORING_SCHEMA,
       variableCatalog: [],
       sectionVariableNamesBySerial: {},
       timings: {

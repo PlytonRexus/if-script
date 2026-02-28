@@ -24,11 +24,13 @@ export type IdeDiagnosticDataKind =
   | 'missing_section_target'
   | 'missing_scene_target'
   | 'start_at_unresolved'
+  | 'scene_first_unresolved'
 
 export interface IdeDiagnosticData {
   kind: IdeDiagnosticDataKind
   target?: string
   sourceSectionSerial?: number
+  sourceSceneSerial?: number
 }
 
 export interface IdeDiagnostic {
@@ -75,6 +77,96 @@ export interface SectionIndexEntry {
   col: number
 }
 
+export interface SceneIndexEntry {
+  serial: number
+  name: string
+  first: string | number | null
+  sections: Array<string | number>
+  file: string
+  line: number
+  col: number
+  hasAmbience: boolean
+  sceneTransition: string
+  firstResolved: boolean
+}
+
+export interface StorySettingsIndexEntry {
+  file: string
+  line: number
+  col: number
+  storyTitle: string | null
+  fullTimerSeconds: number | null
+  fullTimerTarget: string | number | null
+  fullTimerOutcome: string | null
+  storyAmbience: string | null
+  storyAmbienceVolume: number
+  storyAmbienceLoop: boolean
+  presentationMode: 'literary' | 'cinematic'
+}
+
+export interface SectionSettingsIndexEntry {
+  sectionSerial: number
+  sectionTitle: string
+  file: string
+  line: number
+  col: number
+  timerSeconds: number | null
+  timerTarget: string | number | null
+  timerOutcome: string | null
+  ambience: string | null
+  ambienceVolume: number
+  ambienceLoop: boolean
+  sfx: string[]
+  backdrop: string | null
+  shot: 'wide' | 'medium' | 'close' | 'extreme_close'
+  textPacing: 'instant' | 'typed' | 'cinematic'
+}
+
+export interface ChoiceIndexEntry {
+  id: string
+  ownerSectionSerial: number
+  ownerSectionTitle: string
+  choiceIndex: number
+  file: string
+  line: number
+  col: number
+  sourceMode: 'legacy' | 'writer'
+  targetType: 'section' | 'scene'
+  target: string | number | null
+  choiceSfx: string | null
+  focusSfx: string | null
+  choiceStyle: 'default' | 'primary' | 'subtle' | 'danger'
+  textPreview: string
+}
+
+export interface AuthoringSchemaProperty {
+  keyword: string
+  field: string
+  type: string
+  description?: string
+  enumValues?: string[]
+  repeatable?: boolean
+  min?: number
+  max?: number
+  defaultValue?: unknown
+}
+
+export interface AuthoringSchemaContext {
+  title: string
+  properties: AuthoringSchemaProperty[]
+  deprecated?: Array<{ keyword: string, replacement: string }>
+}
+
+export interface AuthoringSchema {
+  version: number
+  contexts: {
+    story: AuthoringSchemaContext
+    scene: AuthoringSchemaContext
+    section: AuthoringSchemaContext
+    choice: AuthoringSchemaContext
+  }
+}
+
 export type InferredVariableType = 'number' | 'string' | 'boolean' | 'array' | 'object' | 'unknown'
 
 export interface VariableCatalogEntry {
@@ -106,6 +198,11 @@ export interface ParseWorkerResponse {
   diagnostics: IdeDiagnostic[]
   graph: StoryGraph
   sectionIndex: SectionIndexEntry[]
+  sceneIndex: SceneIndexEntry[]
+  storySettingsIndex: StorySettingsIndexEntry | null
+  sectionSettingsIndex: SectionSettingsIndexEntry[]
+  choiceIndex: ChoiceIndexEntry[]
+  authoringSchema: AuthoringSchema | null
   variableCatalog: VariableCatalogEntry[]
   sectionVariableNamesBySerial: Record<number, string[]>
   timings: {
@@ -120,12 +217,12 @@ export interface CommandPaletteItem {
   title: string
   shortcut: string
   category: string
-  kind?: 'command' | 'file' | 'section'
+  kind?: 'command' | 'file' | 'section' | 'scene'
   keywords?: string[]
   run: () => void
 }
 
-export type CommandPaletteMode = 'all' | 'files' | 'sections'
+export type CommandPaletteMode = 'all' | 'files' | 'sections' | 'scenes'
 
 export interface WorkspaceBundle {
   version: 1
@@ -133,15 +230,78 @@ export interface WorkspaceBundle {
   files: Record<string, string>
 }
 
+export type RuntimeDebugCategory =
+  | 'engine'
+  | 'audio'
+  | 'timer'
+  | 'scene'
+  | 'save'
+  | 'error'
+  | 'system'
+
 export interface RuntimeEventEntry {
   event: string
   at: string
+  category: RuntimeDebugCategory
+  summary: string
   payload: unknown
+}
+
+export interface RuntimeDebugSnapshot {
+  engine: {
+    section: { serial: number, title: string | null } | null
+    scene: { serial: number, name: string } | null
+    timers: {
+      active: Array<{
+        timerType: 'full' | 'section'
+        seconds: number
+        durationMs: number
+        startedAt: number
+        deadlineAt: number
+        outcomeText: string | null
+      }>
+    }
+    variables: Record<string, unknown>
+  } | null
+  audio: {
+    ui: {
+      enabled: boolean
+      paused: boolean
+      storyAmbienceLoaded: boolean
+      sceneMusicLoaded: boolean
+      ambienceLoaded: boolean
+      hasLoadedAudio: boolean
+      playing: boolean
+    } | null
+    channels: {
+      enabled: boolean
+      paused: boolean
+      storyAmbienceUrl: string | null
+      sceneMusicUrl: string | null
+      ambienceUrl: string | null
+    } | null
+  } | null
+  timeline: Array<{ eventName: string, payload: unknown }>
+}
+
+export interface RuntimeDebugState {
+  snapshot: RuntimeDebugSnapshot | null
+  lastUpdatedAt: string | null
+}
+
+export type InspectorTab = 'story' | 'scene' | 'section' | 'choice'
+
+export interface AdvancedInspectorSelection {
+  activeTab: InspectorTab
+  sceneSerial: number | null
+  sectionSerial: number | null
+  choiceId: string | null
 }
 
 export type PanelId =
   | 'workspace'
   | 'editor'
+  | 'inspector'
   | 'preview'
   | 'graph'
   | 'diagnostics'

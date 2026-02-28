@@ -92,6 +92,23 @@ button {
   gap: 0.35rem;
 }
 
+.panel-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-left: 0.35rem;
+  padding-left: 0.35rem;
+  border-left: 1px solid var(--border);
+}
+
+.panel-toggle-group > span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .toolbar-actions button,
 .mini-btn {
   border: 1px solid var(--border);
@@ -542,6 +559,7 @@ button {
 
 .diagnostics-panel,
 .runtime-events,
+.inspector-panel,
 .graph-panel,
 .timings-panel {
   height: 100%;
@@ -749,6 +767,70 @@ button {
   padding-bottom: 0.6rem;
 }
 
+.inspector-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.45rem 0.55rem 0;
+}
+
+.inspector-body {
+  min-height: 0;
+  overflow: auto;
+  flex: 1;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.inspector-form {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.inspector-form label {
+  display: grid;
+  gap: 0.18rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.inspector-form input,
+.inspector-form select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel-strong);
+  color: var(--text-main);
+  padding: 0.34rem 0.42rem;
+  font-size: 0.74rem;
+}
+
+.inspector-meta {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem;
+  background: color-mix(in srgb, var(--bg-panel-strong) 86%, var(--accent) 14%);
+}
+
+.inspector-meta p {
+  margin: 0;
+  font-size: 0.74rem;
+}
+
+.inspector-syntax-preview {
+  margin: 0.45rem 0 0;
+  max-height: 140px;
+  overflow: auto;
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+}
+
+.event-summary {
+  margin: 0.3rem 0 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
 .timings-body {
   min-height: 0;
   overflow: auto;
@@ -833,6 +915,7 @@ button {
 @media (max-width: 1180px) {
   .sidebar,
   .editor-pane,
+  .inspector-panel,
   .preview-panel,
   .diagnostics-panel,
   .runtime-events,
@@ -850,6 +933,12 @@ button {
 
   .toolbar-actions {
     justify-content: flex-start;
+  }
+
+  .panel-toggle-group {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
   }
 
   .graph-context {

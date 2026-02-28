@@ -11,6 +11,7 @@ interface CommandPaletteProps {
 function modeToKind(mode: CommandPaletteMode): CommandPaletteItem['kind'] | null {
   if (mode === 'files') return 'file'
   if (mode === 'sections') return 'section'
+  if (mode === 'scenes') return 'scene'
   return null
 }
 
@@ -106,7 +107,13 @@ export function CommandPalette(props: CommandPaletteProps): JSX.Element | null {
         <input
           autoFocus
           className="command-input"
-          placeholder={props.mode === 'files' ? 'Quick open files...' : props.mode === 'sections' ? 'Quick open sections...' : 'Type a command'}
+          placeholder={props.mode === 'files'
+            ? 'Quick open files...'
+            : props.mode === 'sections'
+              ? 'Quick open sections...'
+              : props.mode === 'scenes'
+                ? 'Quick open scenes...'
+                : 'Type a command'}
           value={query}
           onChange={(event) => {
             setQuery(event.currentTarget.value)

@@ -1,8 +1,13 @@
 import { create } from 'zustand'
 import type {
+  AuthoringSchema,
+  ChoiceIndexEntry,
   IdeDiagnostic,
   RuntimeEventEntry,
+  SceneIndexEntry,
   SectionIndexEntry,
+  SectionSettingsIndexEntry,
+  StorySettingsIndexEntry,
   StoryGraph,
   VariableCatalogEntry,
   WorkspaceFile,
@@ -68,6 +73,11 @@ interface IdeState {
   diagnostics: IdeDiagnostic[]
   graph: StoryGraph
   sectionIndex: SectionIndexEntry[]
+  sceneIndex: SceneIndexEntry[]
+  storySettingsIndex: StorySettingsIndexEntry | null
+  sectionSettingsIndex: SectionSettingsIndexEntry[]
+  choiceIndex: ChoiceIndexEntry[]
+  authoringSchema: AuthoringSchema | null
   variableCatalog: VariableCatalogEntry[]
   sectionVariableNamesBySerial: Record<number, string[]>
   parseStatus: 'idle' | 'running' | 'error' | 'ok'
@@ -90,6 +100,11 @@ interface IdeState {
     diagnostics: IdeDiagnostic[]
     graph: StoryGraph
     sectionIndex: SectionIndexEntry[]
+    sceneIndex: SceneIndexEntry[]
+    storySettingsIndex: StorySettingsIndexEntry | null
+    sectionSettingsIndex: SectionSettingsIndexEntry[]
+    choiceIndex: ChoiceIndexEntry[]
+    authoringSchema: AuthoringSchema | null
     variableCatalog: VariableCatalogEntry[]
     sectionVariableNamesBySerial: Record<number, string[]>
     parseStatus: IdeState['parseStatus']
@@ -119,6 +134,11 @@ export const useIdeStore = create<IdeState>((set, get) => ({
   diagnostics: [],
   graph: { nodes: [], edges: [], startNodeId: null, deadEnds: [] },
   sectionIndex: [],
+  sceneIndex: [],
+  storySettingsIndex: null,
+  sectionSettingsIndex: [],
+  choiceIndex: [],
+  authoringSchema: null,
   variableCatalog: [],
   sectionVariableNamesBySerial: {},
   parseStatus: 'idle',
@@ -143,6 +163,11 @@ export const useIdeStore = create<IdeState>((set, get) => ({
       diagnostics: [],
       graph: { nodes: [], edges: [], startNodeId: null, deadEnds: [] },
       sectionIndex: [],
+      sceneIndex: [],
+      storySettingsIndex: null,
+      sectionSettingsIndex: [],
+      choiceIndex: [],
+      authoringSchema: null,
       variableCatalog: [],
       sectionVariableNamesBySerial: {},
       parseStatus: 'idle',
@@ -270,12 +295,31 @@ export const useIdeStore = create<IdeState>((set, get) => ({
     }))
   },
 
-  setDiagnosticsGraph: ({ diagnostics, graph, sectionIndex, variableCatalog, sectionVariableNamesBySerial, parseStatus, parseRequestId, timings }) => {
+  setDiagnosticsGraph: ({
+    diagnostics,
+    graph,
+    sectionIndex,
+    sceneIndex,
+    storySettingsIndex,
+    sectionSettingsIndex,
+    choiceIndex,
+    authoringSchema,
+    variableCatalog,
+    sectionVariableNamesBySerial,
+    parseStatus,
+    parseRequestId,
+    timings
+  }) => {
     if (parseRequestId < get().parseRequestId) return
     set({
       diagnostics,
       graph,
       sectionIndex,
+      sceneIndex,
+      storySettingsIndex,
+      sectionSettingsIndex,
+      choiceIndex,
+      authoringSchema,
       variableCatalog,
       sectionVariableNamesBySerial,
       parseStatus,

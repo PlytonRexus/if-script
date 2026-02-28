@@ -8,7 +8,17 @@ interface DiagnosticsPanelProps {
 
 function supportsCreateSectionQuickFix(diagnostic: IdeDiagnostic): boolean {
   if (!diagnostic.data?.target) return false
-  return diagnostic.data.kind === 'missing_section_target' || diagnostic.data.kind === 'start_at_unresolved'
+  return diagnostic.data.kind === 'missing_section_target' ||
+    diagnostic.data.kind === 'start_at_unresolved' ||
+    diagnostic.data.kind === 'missing_scene_target' ||
+    diagnostic.data.kind === 'scene_first_unresolved'
+}
+
+function quickFixLabel(diagnostic: IdeDiagnostic): string {
+  if (diagnostic.data?.kind === 'missing_scene_target' || diagnostic.data?.kind === 'scene_first_unresolved') {
+    return `Create missing scene "${diagnostic.data?.target}"`
+  }
+  return `Create missing section "${diagnostic.data?.target}"`
 }
 
 export function DiagnosticsPanel(props: DiagnosticsPanelProps): JSX.Element {
@@ -48,7 +58,7 @@ export function DiagnosticsPanel(props: DiagnosticsPanelProps): JSX.Element {
                   props.onApplyQuickFix(d)
                 }}
               >
-                Create missing section "{d.data?.target}"
+                {quickFixLabel(d)}
               </button>
             ) : null}
           </article>

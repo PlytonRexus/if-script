@@ -16,6 +16,7 @@ IF-Script IDE vNext (React + TypeScript + Vite).
 - Context-aware authoring completions (section targets + variables + snippets)
 - Diagnostics quick-fix for creating missing section targets
 - Section preview focus controls (auto-follow + pin section)
+- Quick show/hide panel toggles (top bar + command palette)
 - Workspace persistence via IndexedDB
 - Chromium directory workspace mode via File System Access API
 - Bundle import/export fallback (`.ifproj.json`)
