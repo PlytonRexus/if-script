@@ -53,21 +53,46 @@ function collectNode(node: any, visit: (node: any) => void): void {
   }
 }
 
-function resolveSectionTitle(story: any, sectionRef: unknown): string | null {
-  if (sectionRef === undefined || sectionRef === null || sectionRef === '') return null
-  if (typeof sectionRef === 'number') {
-    const section = (story.sections ?? []).find((item: any) => item.serial === sectionRef)
-    return section?.settings?.title ?? null
-  }
-  return String(sectionRef)
+function idPart(input: any, serialFallback: unknown): string {
+  const source = input?.sourceRange ?? input?.source ?? null
+  const file = typeof source?.file === 'string' ? source.file : '<inline>'
+  const startLine = typeof source?.startLine === 'number'
+    ? source.startLine
+    : (typeof source?.line === 'number' ? source.line : 0)
+  const startCol = typeof source?.startCol === 'number'
+    ? source.startCol
+    : (typeof source?.col === 'number' ? source.col : 0)
+  const endLine = typeof source?.endLine === 'number' ? source.endLine : startLine
+  const endCol = typeof source?.endCol === 'number' ? source.endCol : startCol
+  return `${file}:${startLine}:${startCol}:${endLine}:${endCol}:${String(serialFallback ?? '?')}`
 }
 
-function resolveScene(story: any, sceneRef: unknown): any | null {
-  if (sceneRef === undefined || sceneRef === null || sceneRef === '') return null
-  if (typeof sceneRef === 'number') {
-    return (story.scenes ?? []).find((scene: any) => scene.serial === sceneRef) ?? null
+function sectionNodeId(section: any): string {
+  return `section:${idPart(section, section?.serial)}`
+}
+
+function sceneNodeId(scene: any): string {
+  return `scene:${idPart(scene, scene?.serial)}`
+}
+
+function resolveSectionTargets(story: any, sectionRef: unknown): any[] {
+  if (sectionRef === undefined || sectionRef === null || sectionRef === '') return []
+  const sections = Array.isArray(story?.sections) ? story.sections : []
+  if (typeof sectionRef === 'number') {
+    return sections.filter((section: any) => section?.serial === sectionRef)
   }
-  return (story.scenes ?? []).find((scene: any) => scene.name === String(sceneRef)) ?? null
+  const text = String(sectionRef)
+  return sections.filter((section: any) => String(section?.settings?.title ?? '') === text)
+}
+
+function resolveSceneTargets(story: any, sceneRef: unknown): any[] {
+  if (sceneRef === undefined || sceneRef === null || sceneRef === '') return []
+  const scenes = Array.isArray(story?.scenes) ? story.scenes : []
+  if (typeof sceneRef === 'number') {
+    return scenes.filter((scene: any) => scene?.serial === sceneRef)
+  }
+  const text = String(sceneRef)
+  return scenes.filter((scene: any) => String(scene?.name ?? '') === text)
 }
 
 function getChoiceTargets(section: any): any[] {
@@ -121,7 +146,7 @@ export function buildStoryGraph(story: any): StoryGraph {
 
   ;(story.sections ?? []).forEach((section: any) => {
     const title = section?.settings?.title ?? `Section ${section?.serial ?? '?'}`
-    const id = `section:${title}`
+    const id = sectionNodeId(section)
     nodes.set(id, {
       id,
       label: title,
@@ -134,7 +159,7 @@ export function buildStoryGraph(story: any): StoryGraph {
 
   ;(story.scenes ?? []).forEach((scene: any) => {
     const sceneName = scene?.name ?? `Scene ${scene?.serial ?? '?'}`
-    const sceneId = `scene:${sceneName}`
+    const sceneId = sceneNodeId(scene)
     nodes.set(sceneId, {
       id: sceneId,
       label: sceneName,
@@ -144,41 +169,74 @@ export function buildStoryGraph(story: any): StoryGraph {
       hasError: false
     })
 
-    const firstTitle = resolveSectionTitle(story, scene?.first)
-    if (!firstTitle) return
-    const firstId = `section:${firstTitle}`
-    edges.push({
-      from: sceneId,
-      to: firstId,
-      targetType: 'scene',
-      conditional: false,
-      unresolved: !nodes.has(firstId)
+    const firstTargets = resolveSectionTargets(story, scene?.first)
+    if (firstTargets.length === 0 && scene?.first !== undefined && scene?.first !== null && scene?.first !== '') {
+      const unresolvedId = `unresolved:section:${String(scene.first)}`
+      edges.push({
+        from: sceneId,
+        to: unresolvedId,
+        targetType: 'scene',
+        conditional: false,
+        unresolved: true
+      })
+      unresolvedTargets.add(unresolvedId)
+      return
+    }
+    firstTargets.forEach((targetSection: any) => {
+      edges.push({
+        from: sceneId,
+        to: sectionNodeId(targetSection),
+        targetType: 'scene',
+        conditional: false,
+        unresolved: false
+      })
     })
-    if (!nodes.has(firstId)) unresolvedTargets.add(firstId)
   })
 
   ;(story.sections ?? []).forEach((section: any) => {
-    const sourceTitle = section?.settings?.title ?? `Section ${section?.serial ?? '?'}`
-    const from = `section:${sourceTitle}`
+    const from = sectionNodeId(section)
 
     getChoiceTargets(section).forEach(choice => {
       const targetType = choice.targetType === 'scene' ? 'scene' : 'section'
       const conditional = Boolean(choice.when)
+      const isSet = choice.target !== undefined && choice.target !== null && choice.target !== ''
 
       if (targetType === 'scene') {
-        const scene = resolveScene(story, choice.target)
-        const sceneName = scene?.name ?? String(choice.target)
-        const sceneId = `scene:${sceneName}`
-        const unresolved = !scene || !nodes.has(sceneId)
-        edges.push({ from, to: sceneId, targetType, conditional, unresolved })
-        if (unresolved) unresolvedTargets.add(sceneId)
-      } else {
-        const title = resolveSectionTitle(story, choice.target)
-        const targetId = title ? `section:${title}` : `unresolved:${String(choice.target)}`
-        const unresolved = !title || !nodes.has(targetId)
-        edges.push({ from, to: targetId, targetType, conditional, unresolved })
-        if (unresolved) unresolvedTargets.add(targetId)
+        const targets = resolveSceneTargets(story, choice.target)
+        if (!isSet || targets.length === 0) {
+          const unresolvedId = `unresolved:scene:${String(choice.target ?? '<missing>')}`
+          edges.push({ from, to: unresolvedId, targetType, conditional, unresolved: true })
+          unresolvedTargets.add(unresolvedId)
+          return
+        }
+        targets.forEach((sceneTarget: any) => {
+          edges.push({
+            from,
+            to: sceneNodeId(sceneTarget),
+            targetType,
+            conditional,
+            unresolved: false
+          })
+        })
+        return
       }
+
+      const targets = resolveSectionTargets(story, choice.target)
+      if (!isSet || targets.length === 0) {
+        const unresolvedId = `unresolved:section:${String(choice.target ?? '<missing>')}`
+        edges.push({ from, to: unresolvedId, targetType, conditional, unresolved: true })
+        unresolvedTargets.add(unresolvedId)
+        return
+      }
+      targets.forEach((sectionTarget: any) => {
+        edges.push({
+          from,
+          to: sectionNodeId(sectionTarget),
+          targetType,
+          conditional,
+          unresolved: false
+        })
+      })
     })
   })
 
@@ -186,7 +244,9 @@ export function buildStoryGraph(story: any): StoryGraph {
     if (nodes.has(targetId)) return
     nodes.set(targetId, {
       id: targetId,
-      label: targetId.replace(/^unresolved:/, '').replace(/^scene:/, ''),
+      label: targetId
+        .replace(/^unresolved:section:/, 'missing section: ')
+        .replace(/^unresolved:scene:/, 'missing scene: '),
       nodeType: 'unresolved',
       ending: false,
       unreachable: false,
@@ -194,8 +254,8 @@ export function buildStoryGraph(story: any): StoryGraph {
     })
   })
 
-  const startTitle = resolveSectionTitle(story, story?.settings?.startAt)
-  const startNodeId = startTitle ? `section:${startTitle}` : null
+  const startTargets = resolveSectionTargets(story, story?.settings?.startAt)
+  const startNodeId = startTargets[0] ? sectionNodeId(startTargets[0]) : null
   const reachable = bfsReachable(startNodeId, edges)
 
   const deadEnds: string[] = []
@@ -227,3 +287,4 @@ export function buildStoryGraph(story: any): StoryGraph {
     deadEnds
   }
 }
+

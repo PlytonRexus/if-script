@@ -69,15 +69,26 @@ export interface StoryGraph {
   deadEnds: string[]
 }
 
+export interface SourceRange {
+  file: string
+  startLine: number | null
+  startCol: number | null
+  endLine: number | null
+  endCol: number | null
+}
+
 export interface SectionIndexEntry {
+  entityId?: string
   serial: number
   title: string
   file: string
   line: number
   col: number
+  sourceRange?: SourceRange | null
 }
 
 export interface SceneIndexEntry {
+  entityId?: string
   serial: number
   name: string
   first: string | number | null
@@ -85,37 +96,59 @@ export interface SceneIndexEntry {
   file: string
   line: number
   col: number
+  sourceRange?: SourceRange | null
   hasAmbience: boolean
+  ambienceVolume?: number
+  ambienceLoop?: boolean
+  ambienceFadeInMs?: number
+  ambienceFadeOutMs?: number
   sceneTransition: string
   firstResolved: boolean
 }
 
 export interface StorySettingsIndexEntry {
+  entityId?: string
   file: string
   line: number
   col: number
+  sourceRange?: SourceRange | null
   storyTitle: string | null
+  startAt?: string | number | null
+  referrable?: boolean
   fullTimerSeconds: number | null
   fullTimerTarget: string | number | null
   fullTimerOutcome: string | null
   storyAmbience: string | null
   storyAmbienceVolume: number
   storyAmbienceLoop: boolean
+  storyAmbienceFadeInMs?: number
+  storyAmbienceFadeOutMs?: number
   presentationMode: 'literary' | 'cinematic'
+  maxIterations?: number | null
+  maxCallDepth?: number | null
+  theme?: string | null
+  allowUndo?: boolean
+  showTurn?: boolean
+  animations?: boolean
+  autoSave?: boolean
 }
 
 export interface SectionSettingsIndexEntry {
+  entityId?: string
   sectionSerial: number
   sectionTitle: string
   file: string
   line: number
   col: number
+  sourceRange?: SourceRange | null
   timerSeconds: number | null
   timerTarget: string | number | null
   timerOutcome: string | null
   ambience: string | null
   ambienceVolume: number
   ambienceLoop: boolean
+  ambienceFadeInMs?: number
+  ambienceFadeOutMs?: number
   sfx: string[]
   backdrop: string | null
   shot: 'wide' | 'medium' | 'close' | 'extreme_close'
@@ -123,6 +156,7 @@ export interface SectionSettingsIndexEntry {
 }
 
 export interface ChoiceIndexEntry {
+  entityId?: string
   id: string
   ownerSectionSerial: number
   ownerSectionTitle: string
@@ -130,9 +164,15 @@ export interface ChoiceIndexEntry {
   file: string
   line: number
   col: number
+  sourceRange?: SourceRange | null
   sourceMode: 'legacy' | 'writer'
   targetType: 'section' | 'scene'
   target: string | number | null
+  input?: string | null
+  when?: string | null
+  once?: boolean
+  disabledText?: string | null
+  actions?: string[]
   choiceSfx: string | null
   focusSfx: string | null
   choiceStyle: 'default' | 'primary' | 'subtle' | 'danger'
@@ -228,6 +268,21 @@ export interface WorkspaceBundle {
   version: 1
   manifest: WorkspaceManifest
   files: Record<string, string>
+  metadata?: {
+    storyboardLayout?: StoryboardLayoutState
+  }
+}
+
+export interface AuthoringEntityRef {
+  entityId: string
+  file: string
+  sourceRange: SourceRange | null
+}
+
+export interface StoryboardLayoutState {
+  nodes: Record<string, { x: number, y: number, collapsed?: boolean }>
+  lanes: Record<string, { order: number }>
+  zoom: number
 }
 
 export type RuntimeDebugCategory =

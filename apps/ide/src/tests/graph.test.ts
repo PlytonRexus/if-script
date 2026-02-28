@@ -30,9 +30,10 @@ describe('buildStoryGraph', () => {
 
     const graph = buildStoryGraph(story)
     const unresolvedNode = graph.nodes.find(node => node.nodeType === 'unresolved')
-    const deadEnd = graph.deadEnds.find(id => id.includes('Alone'))
+    const aloneNode = graph.nodes.find(node => node.nodeType === 'section' && node.label === 'Alone')
+    const deadEnd = aloneNode ? graph.deadEnds.includes(aloneNode.id) : false
 
     expect(unresolvedNode).toBeTruthy()
-    expect(deadEnd).toBeTruthy()
+    expect(deadEnd).toBe(true)
   })
 })

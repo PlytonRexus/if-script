@@ -155,19 +155,64 @@ function findChoiceBlock(lines: string[], choice: ChoiceIndexEntry): { start: nu
   return findSimpleBlock(lines, choice.line, /^\s*choice__\s*$/i, /^\s*__choice\s*$/i)
 }
 
+function writerArrowIndent(line: string): string {
+  const match = line.match(/^(\s*)->/)
+  return match?.[1] ?? ''
+}
+
+function parseWriterArrowChoiceLine(line: string): { text: string | null, targetType: 'section' | 'scene', target: string | number | null } {
+  const match = line.match(/^\s*->\s*(["'])(.*?)\1\s*=>\s*(scene\s+)?(.+?)\s*$/i)
+  if (!match) return { text: null, targetType: 'section', target: null }
+  const targetRaw = (match[4] ?? '').trim()
+  let target: string | number | null = null
+  if (/^-?\d+$/.test(targetRaw)) target = Number(targetRaw)
+  else {
+    const q = targetRaw.match(/^(["'])(.*?)\1$/)
+    target = q ? (q[2] ?? '') : targetRaw
+  }
+  return {
+    text: match[2] ?? null,
+    targetType: match[3] ? 'scene' : 'section',
+    target
+  }
+}
+
 export function applyStoryInspectorPatch(content: string, input: {
   settings: StorySettingsIndexEntry
+  storyTitle?: string | null
+  startAt?: string | number | null
+  referrable?: boolean
   fullTimerSeconds: number | null
   fullTimerTarget: string | number | null
   fullTimerOutcome: string | null
   storyAmbience: string | null
   storyAmbienceVolume: number | null
   storyAmbienceLoop: boolean
+  storyAmbienceFadeInMs?: number | null
+  storyAmbienceFadeOutMs?: number | null
   presentationMode: 'literary' | 'cinematic'
+  maxIterations?: number | null
+  maxCallDepth?: number | null
+  theme?: string | null
+  allowUndo?: boolean
+  showTurn?: boolean
+  animations?: boolean
+  autoSave?: boolean
 }): { content: string, syntaxPreview: string } {
   const lines = splitLines(content)
   const block = ensureSettingsBlock(lines)
   const entries: RewriteEntry[] = []
+  entries.push({ keyword: '@storyTitle', lines: input.storyTitle ? [`@storyTitle ${quoteIfNeeded(input.storyTitle)}`] : [] })
+  entries.push({
+    keyword: '@startAt',
+    lines: input.startAt === null || input.startAt === undefined || String(input.startAt).trim() === ''
+      ? []
+      : [`@startAt ${quoteIfNeeded(input.startAt)}`]
+  })
+  entries.push({
+    keyword: '@referrable',
+    lines: input.referrable === undefined ? [] : [`@referrable ${booleanValue(input.referrable, false)}`]
+  })
   entries.push({ keyword: '@fullTimer', lines: timerLine('@fullTimer', input.fullTimerSeconds, input.fullTimerTarget) })
   entries.push({ keyword: '@fullTimerOutcome', lines: input.fullTimerOutcome ? [`@fullTimerOutcome ${quoteIfNeeded(input.fullTimerOutcome)}`] : [] })
   entries.push({ keyword: '@storyAmbience', lines: input.storyAmbience ? [`@storyAmbience ${quoteIfNeeded(input.storyAmbience)}`] : [] })
@@ -176,17 +221,31 @@ export function applyStoryInspectorPatch(content: string, input: {
     lines: numberValue(input.storyAmbienceVolume) != null ? [`@storyAmbienceVolume ${numberValue(input.storyAmbienceVolume)}`] : []
   })
   entries.push({ keyword: '@storyAmbienceLoop', lines: [`@storyAmbienceLoop ${booleanValue(input.storyAmbienceLoop, true)}`] })
+  entries.push({
+    keyword: '@storyAmbienceFadeInMs',
+    lines: numberValue(input.storyAmbienceFadeInMs) != null ? [`@storyAmbienceFadeInMs ${numberValue(input.storyAmbienceFadeInMs)}`] : []
+  })
+  entries.push({
+    keyword: '@storyAmbienceFadeOutMs',
+    lines: numberValue(input.storyAmbienceFadeOutMs) != null ? [`@storyAmbienceFadeOutMs ${numberValue(input.storyAmbienceFadeOutMs)}`] : []
+  })
   entries.push({ keyword: '@presentationMode', lines: [`@presentationMode ${quoteIfNeeded(input.presentationMode)}`] })
+  entries.push({
+    keyword: '@maxIterations',
+    lines: numberValue(input.maxIterations) != null ? [`@maxIterations ${numberValue(input.maxIterations)}`] : []
+  })
+  entries.push({
+    keyword: '@maxCallDepth',
+    lines: numberValue(input.maxCallDepth) != null ? [`@maxCallDepth ${numberValue(input.maxCallDepth)}`] : []
+  })
+  entries.push({ keyword: '@theme', lines: input.theme ? [`@theme ${quoteIfNeeded(input.theme)}`] : [] })
+  entries.push({ keyword: '@allowUndo', lines: input.allowUndo === undefined ? [] : [`@allowUndo ${booleanValue(input.allowUndo, true)}`] })
+  entries.push({ keyword: '@showTurn', lines: input.showTurn === undefined ? [] : [`@showTurn ${booleanValue(input.showTurn, false)}`] })
+  entries.push({ keyword: '@animations', lines: input.animations === undefined ? [] : [`@animations ${booleanValue(input.animations, true)}`] })
+  entries.push({ keyword: '@autoSave', lines: input.autoSave === undefined ? [] : [`@autoSave ${booleanValue(input.autoSave, false)}`] })
 
   rewriteBlockProperties(lines, block.start, block.end, entries, '  ')
-  const syntaxPreview = [
-    ...timerLine('@fullTimer', input.fullTimerSeconds, input.fullTimerTarget),
-    ...(input.fullTimerOutcome ? [`@fullTimerOutcome ${quoteIfNeeded(input.fullTimerOutcome)}`] : []),
-    ...(input.storyAmbience ? [`@storyAmbience ${quoteIfNeeded(input.storyAmbience)}`] : []),
-    ...(numberValue(input.storyAmbienceVolume) != null ? [`@storyAmbienceVolume ${numberValue(input.storyAmbienceVolume)}`] : []),
-    `@storyAmbienceLoop ${booleanValue(input.storyAmbienceLoop, true)}`,
-    `@presentationMode ${quoteIfNeeded(input.presentationMode)}`
-  ].join('\n')
+  const syntaxPreview = entries.flatMap(entry => entry.lines).join('\n')
   return { content: joinLines(lines), syntaxPreview }
 }
 
@@ -197,6 +256,8 @@ export function applySceneInspectorPatch(content: string, scene: SceneIndexEntry
   ambience: string | null
   ambienceVolume: number | null
   ambienceLoop: boolean
+  ambienceFadeInMs?: number | null
+  ambienceFadeOutMs?: number | null
   transition: string
 }): { content: string, syntaxPreview: string } {
   const lines = splitLines(content)
@@ -214,6 +275,8 @@ export function applySceneInspectorPatch(content: string, scene: SceneIndexEntry
     { keyword: '@sceneAmbience', lines: input.ambience ? [`@sceneAmbience ${quoteIfNeeded(input.ambience)}`] : [] },
     { keyword: '@sceneAmbienceVolume', lines: numberValue(input.ambienceVolume) != null ? [`@sceneAmbienceVolume ${numberValue(input.ambienceVolume)}`] : [] },
     { keyword: '@sceneAmbienceLoop', lines: [`@sceneAmbienceLoop ${booleanValue(input.ambienceLoop, true)}`] },
+    { keyword: '@sceneAmbienceFadeInMs', lines: numberValue(input.ambienceFadeInMs) != null ? [`@sceneAmbienceFadeInMs ${numberValue(input.ambienceFadeInMs)}`] : [] },
+    { keyword: '@sceneAmbienceFadeOutMs', lines: numberValue(input.ambienceFadeOutMs) != null ? [`@sceneAmbienceFadeOutMs ${numberValue(input.ambienceFadeOutMs)}`] : [] },
     { keyword: '@sceneTransition', lines: input.transition ? [`@sceneTransition ${quoteIfNeeded(input.transition)}`] : [] }
   ]
   rewriteBlockProperties(lines, block.start, block.end, entries, '  ')
@@ -229,6 +292,8 @@ export function applySectionInspectorPatch(content: string, section: SectionSett
   ambience: string | null
   ambienceVolume: number | null
   ambienceLoop: boolean
+  ambienceFadeInMs?: number | null
+  ambienceFadeOutMs?: number | null
   sfx: string[]
   backdrop: string | null
   shot: string
@@ -245,6 +310,8 @@ export function applySectionInspectorPatch(content: string, section: SectionSett
     { keyword: '@ambience', lines: input.ambience ? [`@ambience ${quoteIfNeeded(input.ambience)}`] : [] },
     { keyword: '@ambienceVolume', lines: numberValue(input.ambienceVolume) != null ? [`@ambienceVolume ${numberValue(input.ambienceVolume)}`] : [] },
     { keyword: '@ambienceLoop', lines: [`@ambienceLoop ${booleanValue(input.ambienceLoop, true)}`] },
+    { keyword: '@ambienceFadeInMs', lines: numberValue(input.ambienceFadeInMs) != null ? [`@ambienceFadeInMs ${numberValue(input.ambienceFadeInMs)}`] : [] },
+    { keyword: '@ambienceFadeOutMs', lines: numberValue(input.ambienceFadeOutMs) != null ? [`@ambienceFadeOutMs ${numberValue(input.ambienceFadeOutMs)}`] : [] },
     { keyword: '@sfx', lines: sfxLines },
     { keyword: '@backdrop', lines: input.backdrop ? [`@backdrop ${quoteIfNeeded(input.backdrop)}`] : [] },
     { keyword: '@shot', lines: input.shot ? [`@shot ${quoteIfNeeded(input.shot)}`] : [] },
@@ -259,22 +326,16 @@ export function applySectionInspectorPatch(content: string, section: SectionSett
 export function applyChoiceInspectorPatch(content: string, choice: ChoiceIndexEntry, input: {
   targetType: 'section' | 'scene'
   target: string | number | null
+  input?: string | null
+  when?: string | null
+  once?: boolean
+  disabledText?: string | null
+  actions?: string[]
   choiceSfx: string | null
   focusSfx: string | null
+  choiceStyle?: 'default' | 'primary' | 'subtle' | 'danger' | null
 }): { content: string, syntaxPreview: string, unsupportedWriterChoice: boolean } {
-  if (choice.sourceMode === 'writer') {
-    return {
-      content,
-      syntaxPreview: 'Writer-arrow choices currently support target edits in source code only.',
-      unsupportedWriterChoice: true
-    }
-  }
-
-  const lines = splitLines(content)
-  const block = findChoiceBlock(lines, choice)
-  if (!block) return { content, syntaxPreview: '', unsupportedWriterChoice: false }
-
-  const entries: RewriteEntry[] = [
+  const commonEntries: RewriteEntry[] = [
     { keyword: '@targetType', lines: [`@targetType ${quoteIfNeeded(input.targetType)}`] },
     {
       keyword: '@target',
@@ -282,14 +343,68 @@ export function applyChoiceInspectorPatch(content: string, choice: ChoiceIndexEn
         ? []
         : [`@target ${quoteIfNeeded(input.target)}`]
     },
+    {
+      keyword: '@input',
+      lines: input.input && input.input.trim() !== '' ? [`@input ${input.input.trim()}`] : []
+    },
+    {
+      keyword: '@when',
+      lines: input.when && input.when.trim() !== '' ? [`@when ${input.when.trim()}`] : []
+    },
+    {
+      keyword: '@once',
+      lines: input.once === undefined ? [] : [`@once ${booleanValue(input.once, false)}`]
+    },
+    {
+      keyword: '@disabledText',
+      lines: input.disabledText && input.disabledText.trim() !== '' ? [`@disabledText ${quoteIfNeeded(input.disabledText.trim())}`] : []
+    },
+    {
+      keyword: '@action',
+      lines: Array.isArray(input.actions)
+        ? input.actions.map(action => action.trim()).filter(Boolean).map(action => `@action ${action}`)
+        : []
+    },
     { keyword: '@choiceSfx', lines: input.choiceSfx ? [`@choiceSfx ${quoteIfNeeded(input.choiceSfx)}`] : [] },
-    { keyword: '@focusSfx', lines: input.focusSfx ? [`@focusSfx ${quoteIfNeeded(input.focusSfx)}`] : [] }
+    { keyword: '@focusSfx', lines: input.focusSfx ? [`@focusSfx ${quoteIfNeeded(input.focusSfx)}`] : [] },
+    { keyword: '@choiceStyle', lines: input.choiceStyle ? [`@choiceStyle ${quoteIfNeeded(input.choiceStyle)}`] : [] }
   ]
 
-  rewriteBlockProperties(lines, block.start, block.end, entries, '    ')
+  if (choice.sourceMode === 'writer') {
+    const lines = splitLines(content)
+    const targetLine = Math.max(0, Math.min(lines.length - 1, choice.line - 1))
+    const line = lines[targetLine]
+    if (!line || !/^\s*->/.test(line)) {
+      return {
+        content,
+        syntaxPreview: 'Writer-arrow choice could not be resolved to source line.',
+        unsupportedWriterChoice: true
+      }
+    }
+    const parsed = parseWriterArrowChoiceLine(line)
+    const indent = writerArrowIndent(line)
+    const rendered = [
+      `${indent}choice__`,
+      ...commonEntries.flatMap(entry => entry.lines).map(entry => `${indent}  ${entry}`),
+      `${indent}  ${quoteIfNeeded(parsed.text ?? '')}`,
+      `${indent}__choice`
+    ]
+    lines.splice(targetLine, 1, ...rendered)
+    return {
+      content: joinLines(lines),
+      syntaxPreview: commonEntries.flatMap(entry => entry.lines).join('\n'),
+      unsupportedWriterChoice: false
+    }
+  }
+
+  const lines = splitLines(content)
+  const block = findChoiceBlock(lines, choice)
+  if (!block) return { content, syntaxPreview: '', unsupportedWriterChoice: false }
+
+  rewriteBlockProperties(lines, block.start, block.end, commonEntries, '    ')
   return {
     content: joinLines(lines),
-    syntaxPreview: entries.flatMap(entry => entry.lines).join('\n'),
+    syntaxPreview: commonEntries.flatMap(entry => entry.lines).join('\n'),
     unsupportedWriterChoice: false
   }
 }

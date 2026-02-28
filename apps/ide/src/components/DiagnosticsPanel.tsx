@@ -6,19 +6,30 @@ interface DiagnosticsPanelProps {
   onApplyQuickFix: (diagnostic: IdeDiagnostic) => void
 }
 
+function diagnosticTarget(diagnostic: IdeDiagnostic): string | null {
+  if (diagnostic.data?.target && diagnostic.data.target.trim() !== '') return diagnostic.data.target.trim()
+  const quoted = diagnostic.message.match(/"([^"]+)"/)
+  if (!quoted?.[1]) return null
+  return quoted[1].trim() || null
+}
+
 function supportsCreateSectionQuickFix(diagnostic: IdeDiagnostic): boolean {
-  if (!diagnostic.data?.target) return false
-  return diagnostic.data.kind === 'missing_section_target' ||
-    diagnostic.data.kind === 'start_at_unresolved' ||
-    diagnostic.data.kind === 'missing_scene_target' ||
-    diagnostic.data.kind === 'scene_first_unresolved'
+  if (!diagnosticTarget(diagnostic)) return false
+  return diagnostic.data?.kind === 'missing_section_target' ||
+    diagnostic.data?.kind === 'start_at_unresolved' ||
+    diagnostic.data?.kind === 'missing_scene_target' ||
+    diagnostic.data?.kind === 'scene_first_unresolved' ||
+    diagnostic.code === 'FULL_TIMER_TARGET_UNRESOLVED' ||
+    diagnostic.code === 'SECTION_TIMER_TARGET_UNRESOLVED'
 }
 
 function quickFixLabel(diagnostic: IdeDiagnostic): string {
+  const target = diagnosticTarget(diagnostic)
+  if (!target) return 'Create missing target'
   if (diagnostic.data?.kind === 'missing_scene_target' || diagnostic.data?.kind === 'scene_first_unresolved') {
-    return `Create missing scene "${diagnostic.data?.target}"`
+    return `Create missing scene "${target}"`
   }
-  return `Create missing section "${diagnostic.data?.target}"`
+  return `Create missing section "${target}"`
 }
 
 export function DiagnosticsPanel(props: DiagnosticsPanelProps): JSX.Element {

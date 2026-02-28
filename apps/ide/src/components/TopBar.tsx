@@ -15,6 +15,8 @@ interface TopBarProps {
   onImportBundle: () => void
   onExportBundle: () => void
   onToggleTheme: () => void
+  authorMode: 'storyboard' | 'source'
+  onToggleAuthorMode: () => void
   onCommandPalette: () => void
   onResetLayout: () => void
   panelToggleItems: Array<{ id: PanelId, label: string, visible: boolean }>
@@ -48,6 +50,7 @@ export function TopBar(props: TopBarProps): JSX.Element {
         <button onClick={props.onExportBundle}>Export</button>
         <button onClick={props.onResetLayout}>Reset Layout</button>
         <button onClick={props.onToggleTheme}>Theme</button>
+        <button onClick={props.onToggleAuthorMode}>{props.authorMode === 'storyboard' ? 'Source Mode' : 'Storyboard Mode'}</button>
         <button onClick={props.onCommandPalette}>Palette</button>
         <div className="panel-toggle-group" aria-label="Panel visibility controls">
           <span>Panels</span>

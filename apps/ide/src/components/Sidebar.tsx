@@ -26,7 +26,7 @@ export function Sidebar(props: SidebarProps): JSX.Element {
     const deadEnds = new Set(props.graph.deadEnds)
 
     return props.sectionIndex.map(section => {
-      const nodeId = `section:${section.title}`
+      const nodeId = section.entityId ?? `section:${section.title}`
       const node = graphNodeById.get(nodeId)
       return {
         section,

@@ -1,6 +1,7 @@
 import type {
   ChoiceIndexEntry,
   SceneIndexEntry,
+  SourceRange,
   SectionSettingsIndexEntry,
   StorySettingsIndexEntry
 } from '../types/interfaces'
@@ -27,6 +28,33 @@ function sourceCol(source: SourceLike | undefined, fallbackCol = 1): number {
   return fallbackCol
 }
 
+function sourceRange(source: any, fallbackFile: string, fallbackLine = 1, fallbackCol = 1): SourceRange {
+  const nested = source?.sourceRange
+  if (nested && typeof nested === 'object') {
+    return {
+      file: typeof nested.file === 'string' ? nested.file : fallbackFile,
+      startLine: typeof nested.startLine === 'number' ? nested.startLine : fallbackLine,
+      startCol: typeof nested.startCol === 'number' ? nested.startCol : fallbackCol,
+      endLine: typeof nested.endLine === 'number' ? nested.endLine : (typeof nested.startLine === 'number' ? nested.startLine : fallbackLine),
+      endCol: typeof nested.endCol === 'number' ? nested.endCol : (typeof nested.startCol === 'number' ? nested.startCol : fallbackCol)
+    }
+  }
+  const line = sourceLine(source, fallbackLine)
+  const col = sourceCol(source, fallbackCol)
+  return {
+    file: sourceFile(source, fallbackFile),
+    startLine: line,
+    startCol: col,
+    endLine: line,
+    endCol: col
+  }
+}
+
+function makeEntityId(kind: string, range: SourceRange, discriminator = ''): string {
+  const suffix = discriminator ? `:${discriminator}` : ''
+  return `${kind}:${range.file}:${range.startLine ?? 0}:${range.startCol ?? 0}:${range.endLine ?? 0}:${range.endCol ?? 0}${suffix}`
+}
+
 function sectionRefExists(target: unknown, serials: Set<number>, titles: Set<string>): boolean {
   if (target === null || target === undefined || target === '') return false
   if (typeof target === 'number') return serials.has(target)
@@ -45,21 +73,67 @@ function choiceTextPreview(choice: any): string {
   return preview.slice(0, 120)
 }
 
+function expressionPreview(node: any): string {
+  if (node == null) return ''
+  if (typeof node === 'string' || typeof node === 'number' || typeof node === 'boolean') return String(node)
+  if (node?._class === 'Token') return String(node.symbol ?? '')
+  if (node?._class === 'Action') {
+    if (node.type === 'assign') return `${expressionPreview(node.left)} = ${expressionPreview(node.right)}`
+    if (node.type === 'binary') return `${expressionPreview(node.left)} ${node.operator} ${expressionPreview(node.right)}`
+    if (node.type === 'unary') return `${node.operator}${expressionPreview(node.left)}`
+    if (node.type === 'return') return `return__ ${expressionPreview(node.left)}`
+  }
+  if (node?._class === 'FunctionCall') {
+    const name = typeof node.name === 'string' ? node.name : expressionPreview(node.name)
+    const args = Array.isArray(node.args) ? node.args.map(expressionPreview).join(', ') : ''
+    return `${name}(${args})`
+  }
+  if (node?._class === 'MemberAccess') {
+    const args = Array.isArray(node.args) ? `(${node.args.map(expressionPreview).join(', ')})` : ''
+    return `${expressionPreview(node.object)}.${String(node.member ?? '')}${args}`
+  }
+  if (node?._class === 'ArrayAccess') return `${expressionPreview(node.array)}[${expressionPreview(node.index)}]`
+  if (node?._class === 'ArrayLiteral') return `[${Array.isArray(node.elements) ? node.elements.map(expressionPreview).join(', ') : ''}]`
+  return ''
+}
+
+function extractChoiceInput(input: any): string | null {
+  if (typeof input === 'string' && input.trim() !== '') return input.trim()
+  if (input && typeof input === 'object' && input._class === 'Token' && typeof input.symbol === 'string' && input.symbol.trim() !== '') {
+    return input.symbol.trim()
+  }
+  return null
+}
+
 export function buildStorySettingsIndex(story: any, fallbackFile: string): StorySettingsIndexEntry | null {
   if (!story || typeof story !== 'object') return null
   const settings = story.settings ?? {}
+  const range = sourceRange(story?.source ?? null, fallbackFile, 1, 1)
   return {
+    entityId: makeEntityId('story', range, 'settings'),
     file: fallbackFile,
     line: 1,
     col: 1,
+    sourceRange: range,
     storyTitle: typeof settings.name === 'string' ? settings.name : null,
+    startAt: settings?.startAt ?? null,
+    referrable: settings?.referrable === true,
     fullTimerSeconds: typeof settings?.fullTimer?.timer === 'number' ? settings.fullTimer.timer : null,
     fullTimerTarget: settings?.fullTimer?.target ?? null,
     fullTimerOutcome: typeof settings.fullTimerOutcome === 'string' ? settings.fullTimerOutcome : null,
     storyAmbience: typeof settings.storyAmbience === 'string' ? settings.storyAmbience : null,
     storyAmbienceVolume: typeof settings.storyAmbienceVolume === 'number' ? settings.storyAmbienceVolume : 1,
     storyAmbienceLoop: settings.storyAmbienceLoop !== undefined ? settings.storyAmbienceLoop !== false : true,
-    presentationMode: settings.presentationMode === 'cinematic' ? 'cinematic' : 'literary'
+    storyAmbienceFadeInMs: typeof settings.storyAmbienceFadeInMs === 'number' ? settings.storyAmbienceFadeInMs : 0,
+    storyAmbienceFadeOutMs: typeof settings.storyAmbienceFadeOutMs === 'number' ? settings.storyAmbienceFadeOutMs : 0,
+    presentationMode: settings.presentationMode === 'cinematic' ? 'cinematic' : 'literary',
+    maxIterations: typeof settings.maxIterations === 'number' ? settings.maxIterations : null,
+    maxCallDepth: typeof settings.maxCallDepth === 'number' ? settings.maxCallDepth : null,
+    theme: typeof settings.theme === 'string' ? settings.theme : null,
+    allowUndo: settings.allowUndo !== false,
+    showTurn: settings.showTurn === true,
+    animations: settings.animations !== false,
+    autoSave: settings.autoSave === true
   }
 }
 
@@ -75,8 +149,10 @@ export function buildSceneIndex(story: any, fallbackFile: string): SceneIndexEnt
 
   return scenes.map((scene: any) => {
     const source = scene?.source as SourceLike | undefined
+    const range = sourceRange(scene, fallbackFile, sourceLine(source, 1), sourceCol(source, 1))
     const first = scene?.first ?? null
     return {
+      entityId: makeEntityId('scene', range, String(scene?.serial ?? '')),
       serial: typeof scene?.serial === 'number' ? scene.serial : -1,
       name: typeof scene?.name === 'string' && scene.name.trim() !== '' ? scene.name : `Scene ${scene?.serial ?? '?'}`,
       first,
@@ -84,7 +160,12 @@ export function buildSceneIndex(story: any, fallbackFile: string): SceneIndexEnt
       file: sourceFile(source, fallbackFile),
       line: sourceLine(source, 1),
       col: sourceCol(source, 1),
+      sourceRange: range,
       hasAmbience: typeof scene?.music === 'string' && scene.music.trim() !== '',
+      ambienceVolume: typeof scene?.musicVolume === 'number' ? scene.musicVolume : 1,
+      ambienceLoop: scene?.musicLoop !== undefined ? scene.musicLoop !== false : true,
+      ambienceFadeInMs: typeof scene?.musicFadeInMs === 'number' ? scene.musicFadeInMs : 0,
+      ambienceFadeOutMs: typeof scene?.musicFadeOutMs === 'number' ? scene.musicFadeOutMs : 0,
       sceneTransition: typeof scene?.sceneTransition === 'string' && scene.sceneTransition.trim() !== '' ? scene.sceneTransition : 'cut',
       firstResolved: sectionRefExists(first, sectionSerials, sectionTitles)
     }
@@ -100,7 +181,9 @@ export function buildSectionSettingsIndex(story: any, fallbackFile: string): Sec
   return sections.map((section: any) => {
     const source = section?.source as SourceLike | undefined
     const settings = section?.settings ?? {}
+    const range = sourceRange(section, fallbackFile, sourceLine(source, 1), sourceCol(source, 1))
     return {
+      entityId: makeEntityId('section', range, String(section?.serial ?? '')),
       sectionSerial: typeof section?.serial === 'number' ? section.serial : -1,
       sectionTitle: typeof settings?.title === 'string' && settings.title.trim() !== ''
         ? settings.title
@@ -108,12 +191,15 @@ export function buildSectionSettingsIndex(story: any, fallbackFile: string): Sec
       file: sourceFile(source, fallbackFile),
       line: sourceLine(source, 1),
       col: sourceCol(source, 1),
+      sourceRange: range,
       timerSeconds: typeof settings?.timer?.timer === 'number' && settings.timer.timer > 0 ? settings.timer.timer : null,
       timerTarget: settings?.timer?.target ?? null,
       timerOutcome: typeof settings?.timerOutcome === 'string' ? settings.timerOutcome : null,
       ambience: typeof settings?.ambience === 'string' ? settings.ambience : null,
       ambienceVolume: typeof settings?.ambienceVolume === 'number' ? settings.ambienceVolume : 1,
       ambienceLoop: settings?.ambienceLoop !== undefined ? settings.ambienceLoop !== false : true,
+      ambienceFadeInMs: typeof settings?.ambienceFadeInMs === 'number' ? settings.ambienceFadeInMs : 0,
+      ambienceFadeOutMs: typeof settings?.ambienceFadeOutMs === 'number' ? settings.ambienceFadeOutMs : 0,
       sfx: Array.isArray(settings?.sfx) ? settings.sfx.filter((entry: unknown): entry is string => typeof entry === 'string') : [],
       backdrop: typeof settings?.backdrop === 'string' ? settings.backdrop : null,
       shot: settings?.shot === 'wide' || settings?.shot === 'close' || settings?.shot === 'extreme_close' ? settings.shot : 'medium',
@@ -140,17 +226,30 @@ export function buildChoiceIndex(story: any, fallbackFile: string): ChoiceIndexE
       const source = choice?.source as SourceLike | undefined
       const choiceIndex = typeof choice?.choiceI === 'number' ? choice.choiceI : idx + 1
       const targetType = choice?.targetType === 'scene' ? 'scene' : 'section'
+      const line = sourceLine(source, sourceLine(section?.source as SourceLike | undefined, 1))
+      const col = sourceCol(source, 1)
+      const range = sourceRange(choice, fallbackFile, line, col)
+      const id = `choice:${sectionSerial}:${choiceIndex}`
       out.push({
-        id: `choice:${sectionSerial}:${choiceIndex}`,
+        entityId: makeEntityId('choice', range, id),
+        id,
         ownerSectionSerial: sectionSerial,
         ownerSectionTitle: sectionTitle,
         choiceIndex,
         file: sourceFile(source, fallbackFile),
-        line: sourceLine(source, sourceLine(section?.source as SourceLike | undefined, 1)),
-        col: sourceCol(source, 1),
+        line,
+        col,
+        sourceRange: range,
         sourceMode: source && source.mode === 'writer' ? 'writer' : 'legacy',
         targetType,
         target: choice?.target ?? null,
+        input: extractChoiceInput(choice?.input),
+        when: choice?.when ? expressionPreview(choice.when) : null,
+        once: choice?.once === true,
+        disabledText: typeof choice?.disabledText === 'string' ? choice.disabledText : null,
+        actions: Array.isArray(choice?.actions)
+          ? choice.actions.map((entry: any) => expressionPreview(entry)).filter((entry: string) => entry.trim() !== '')
+          : [],
         choiceSfx: typeof choice?.choiceSfx === 'string' ? choice.choiceSfx : null,
         focusSfx: typeof choice?.focusSfx === 'string' ? choice.focusSfx : null,
         choiceStyle: choice?.choiceStyle === 'primary' || choice?.choiceStyle === 'subtle' || choice?.choiceStyle === 'danger'

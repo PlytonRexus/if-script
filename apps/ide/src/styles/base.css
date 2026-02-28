@@ -912,9 +912,75 @@ button {
   padding: 0.55rem 0.75rem;
 }
 
+.storyboard-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.storyboard-scroll {
+  overflow: auto;
+  padding: 0.55rem 0.75rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.storyboard-lane {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem;
+  background: color-mix(in srgb, var(--bg-panel-strong) 90%, var(--accent) 10%);
+  display: grid;
+  gap: 0.55rem;
+}
+
+.storyboard-lane > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.storyboard-cards {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.storyboard-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text-main);
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.storyboard-card strong {
+  font-size: 0.8rem;
+}
+
+.storyboard-scenes h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.storyboard-scene-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 @media (max-width: 1180px) {
   .sidebar,
   .editor-pane,
+  .storyboard-panel,
   .inspector-panel,
   .preview-panel,
   .diagnostics-panel,

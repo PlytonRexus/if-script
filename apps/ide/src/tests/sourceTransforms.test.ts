@@ -167,4 +167,49 @@ describe('sourceTransforms', () => {
     expect(patched.content).toContain('@target "Act One"')
     expect(patched.content).toContain('@choiceSfx "/audio/click.mp3"')
   })
+
+  it('converts writer-arrow choice to legacy block when advanced fields are applied', () => {
+    const content = [
+      'section "Prologue"',
+      '  -> "Continue" => "OldTarget"',
+      'end',
+      ''
+    ].join('\n')
+    const choice: ChoiceIndexEntry = {
+      id: 'choice:1:1',
+      ownerSectionSerial: 1,
+      ownerSectionTitle: 'Prologue',
+      choiceIndex: 1,
+      file: '/workspace/main.if',
+      line: 2,
+      col: 3,
+      sourceMode: 'writer',
+      targetType: 'section',
+      target: 'OldTarget',
+      choiceSfx: null,
+      focusSfx: null,
+      choiceStyle: 'default',
+      textPreview: 'Continue'
+    }
+
+    const patched = applyChoiceInspectorPatch(content, choice, {
+      targetType: 'section',
+      target: 'Next',
+      input: 'playerName',
+      when: 'gold >= 5',
+      once: true,
+      disabledText: 'Need gold',
+      actions: ['gold = gold - 5'],
+      choiceSfx: '/audio/click.mp3',
+      focusSfx: '/audio/focus.mp3',
+      choiceStyle: 'primary'
+    })
+
+    expect(patched.unsupportedWriterChoice).toBe(false)
+    expect(patched.content).toContain('choice__')
+    expect(patched.content).toContain('@input playerName')
+    expect(patched.content).toContain('@when gold >= 5')
+    expect(patched.content).toContain('@action gold = gold - 5')
+    expect(patched.content).toContain('__choice')
+  })
 })

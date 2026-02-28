@@ -47,13 +47,30 @@ function buildSectionIndex(story: any, fallbackFile: string): SectionIndexEntry[
     const title = typeof section?.settings?.title === 'string' && section.settings.title.trim() !== ''
       ? section.settings.title
       : `Section ${section?.serial ?? '?'}`
+    const sourceRange = section?.sourceRange && typeof section.sourceRange === 'object'
+      ? {
+          file: typeof section.sourceRange.file === 'string' ? section.sourceRange.file : file,
+          startLine: typeof section.sourceRange.startLine === 'number' ? section.sourceRange.startLine : line,
+          startCol: typeof section.sourceRange.startCol === 'number' ? section.sourceRange.startCol : col,
+          endLine: typeof section.sourceRange.endLine === 'number' ? section.sourceRange.endLine : line,
+          endCol: typeof section.sourceRange.endCol === 'number' ? section.sourceRange.endCol : col
+        }
+      : {
+          file,
+          startLine: line,
+          startCol: col,
+          endLine: line,
+          endCol: col
+        }
 
     entries.push({
+      entityId: `section:${file}:${sourceRange.startLine ?? line}:${sourceRange.startCol ?? col}:${sourceRange.endLine ?? line}:${sourceRange.endCol ?? col}:${section?.serial ?? '?'}`,
       serial: typeof section?.serial === 'number' ? section.serial : -1,
       title,
       file,
       line,
-      col
+      col,
+      sourceRange
     })
   })
 

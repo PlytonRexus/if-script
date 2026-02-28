@@ -61,21 +61,21 @@ function snippetSuggestions(monaco: typeof Monaco, range: Monaco.IRange): Monaco
     {
       label: 'import block',
       kind: monaco.languages.CompletionItemKind.Snippet,
-      insertText: 'import__\\n  @path "${1:/workspace/chapter-2.partial.if}"\\n__import',
+      insertText: 'import__"${1:/workspace/chapter-2.partial.if}"__import',
       insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
       range
     },
     {
-      label: 'conditional choice',
+      label: 'conditional choice block',
       kind: monaco.languages.CompletionItemKind.Snippet,
-      insertText: '-> "${1:Choice text}" => "${2:Target}" when (${3:condition})',
+      insertText: 'choice__\\n  @target "${1:Target}"\\n  @when ${2:condition}\\n  "${3:Choice text}"\\n__choice',
       insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
       range
     },
     {
       label: 'timer settings',
       kind: monaco.languages.CompletionItemKind.Snippet,
-      insertText: '@timer {"seconds": ${1:30}, "target": "${2:SectionTitle}"}',
+      insertText: '@timer ${1:30} "${2:SectionTitle}"',
       insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
       range
     },

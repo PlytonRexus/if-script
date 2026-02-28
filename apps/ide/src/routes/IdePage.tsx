@@ -7,6 +7,7 @@ import { GraphPane } from '../components/GraphPane'
 import { InspectorPane } from '../components/InspectorPane'
 import { PlaytestInspectorPanel } from '../components/PlaytestInspectorPanel'
 import { PreviewPane } from '../components/PreviewPane'
+import { StoryboardPane } from '../components/StoryboardPane'
 import { Sidebar } from '../components/Sidebar'
 import { TopBar } from '../components/TopBar'
 import { DESKTOP_GRID_COLUMNS, DESKTOP_GRID_ROW_HEIGHT, PANEL_IDS, PANEL_LAYOUT_VERSION, deserializeLayout, fromGridLayout, getDefaultDesktopLayout, getDefaultPanelVisibility, isDesktopViewport, normalizePanelVisibility, serializeLayout, toGridLayout, type PanelVisibilityState } from '../layout/panelLayout'
@@ -60,6 +61,8 @@ const PANEL_TOGGLE_SHORT_LABELS: Record<PanelId, string> = {
   runtime: 'Runtime',
   timings: 'Timing'
 }
+const AUTHOR_MODE_V1_ENABLED = true
+type AuthorMode = 'storyboard' | 'source'
 
 interface PersistedWorkspace {
   manifest: WorkspaceManifest
@@ -78,6 +81,12 @@ interface PersistedWorkspace {
   previewAutoFollow?: boolean
   sectionVariablePresets?: Record<string, VariablePreset[]>
   inspectorSelection?: AdvancedInspectorSelection
+  authorMode?: AuthorMode
+  storyboardLayout?: {
+    nodes: Record<string, { x: number, y: number, collapsed?: boolean }>
+    lanes: Record<string, { order: number }>
+    zoom: number
+  }
 }
 
 function fileSnapshot(files: Record<string, WorkspaceFile>): Record<string, string> {
@@ -162,6 +171,12 @@ export function IdePage(): JSX.Element {
   })
   const [panelLayout, setPanelLayout] = useState<PanelLayoutState>(() => getDefaultDesktopLayout())
   const [panelVisibility, setPanelVisibility] = useState<PanelVisibilityState>(() => getDefaultPanelVisibility())
+  const [authorMode, setAuthorMode] = useState<AuthorMode>(() => AUTHOR_MODE_V1_ENABLED ? 'storyboard' : 'source')
+  const [storyboardLayout, setStoryboardLayout] = useState({
+    nodes: {} as Record<string, { x: number, y: number, collapsed?: boolean }>,
+    lanes: {} as Record<string, { order: number }>,
+    zoom: 1
+  })
   const [desktopMode, setDesktopMode] = useState<boolean>(() => readDesktopMode())
   const workspaceLayoutRef = useRef<HTMLElement | null>(null)
   const workerRef = useRef<Worker | null>(null)
@@ -201,7 +216,7 @@ export function IdePage(): JSX.Element {
     }
     return cursorFocusedSection
   }, [cursorFocusedSection, previewAnchorSectionKey, previewAutoFollow, previewPinnedSectionKey, sectionByKey])
-  const focusedSectionNodeId = cursorFocusedSection ? `section:${cursorFocusedSection.title}` : null
+  const focusedSectionNodeId = cursorFocusedSection ? (cursorFocusedSection.entityId ?? `section:${cursorFocusedSection.title}`) : null
   const previewSectionKey = previewSection ? buildSectionPreviewKey(previewSection) : null
   const focusedOverrideText = previewSectionKey ? (sectionPreviewOverrides[previewSectionKey] ?? '{}') : '{}'
   const sectionTitlesForCompletion = useMemo(() => {
@@ -243,9 +258,11 @@ export function IdePage(): JSX.Element {
         pinnedSectionKey: previewPinnedSectionKey
       },
       sectionVariablePresets,
-      inspectorSelection
+      inspectorSelection,
+      authorMode,
+      storyboardLayout
     })
-  }, [activeFilePath, filesMap, inspectorSelection, manifest, previewAutoFollow, previewPinnedSectionKey, recentFilePaths, sectionPreviewOverrides, sectionVariablePresets, theme])
+  }, [activeFilePath, authorMode, filesMap, inspectorSelection, manifest, previewAutoFollow, previewPinnedSectionKey, recentFilePaths, sectionPreviewOverrides, sectionVariablePresets, storyboardLayout, theme])
 
   const runCheck = useCallback(() => {
     const worker = workerRef.current
@@ -331,6 +348,12 @@ export function IdePage(): JSX.Element {
         sceneSerial: null,
         sectionSerial: null,
         choiceId: null
+      })
+      setAuthorMode(persisted.authorMode ?? (AUTHOR_MODE_V1_ENABLED ? 'storyboard' : 'source'))
+      setStoryboardLayout(persisted.storyboardLayout ?? {
+        nodes: {},
+        lanes: {},
+        zoom: 1
       })
     })()
   }, [setRecentFilePaths, setTheme, setWorkspace])
@@ -480,6 +503,18 @@ export function IdePage(): JSX.Element {
     triggerPlaytest()
   }, [triggerPlaytest])
 
+  const switchToStoryboardMode = useCallback(() => {
+    setAuthorMode('storyboard')
+  }, [])
+
+  const switchToSourceMode = useCallback(() => {
+    setAuthorMode('source')
+  }, [])
+
+  const toggleAuthorMode = useCallback(() => {
+    setAuthorMode(mode => mode === 'storyboard' ? 'source' : 'storyboard')
+  }, [])
+
   const jumpToDiagnostic = useCallback((diagnostic: IdeDiagnostic) => {
     const targetFile = diagnostic.file
     if (targetFile && filesMap[targetFile]) {
@@ -572,10 +607,16 @@ export function IdePage(): JSX.Element {
 
   const handleApplyDiagnosticQuickFix = useCallback((diagnostic: IdeDiagnostic) => {
     const quickFix = diagnostic.data
-    const target = quickFix?.target?.trim()
+    const target = (quickFix?.target?.trim() || diagnostic.message.match(/"([^"]+)"/)?.[1]?.trim()) ?? ''
     if (!target) return
     const kind = quickFix?.kind
-    if (kind !== 'missing_section_target' && kind !== 'start_at_unresolved' && kind !== 'missing_scene_target' && kind !== 'scene_first_unresolved') return
+    const supportsKind = kind === 'missing_section_target' ||
+      kind === 'start_at_unresolved' ||
+      kind === 'missing_scene_target' ||
+      kind === 'scene_first_unresolved'
+    const supportsCode = diagnostic.code === 'FULL_TIMER_TARGET_UNRESOLVED' ||
+      diagnostic.code === 'SECTION_TIMER_TARGET_UNRESOLVED'
+    if (!supportsKind && !supportsCode) return
 
     const preferredFile = activeFile?.path && filesMap[activeFile.path] ? activeFile.path : manifest.rootFile
     if (!filesMap[preferredFile]) return
@@ -629,13 +670,13 @@ export function IdePage(): JSX.Element {
 
   const jumpToGraphNode = useCallback((nodeId: string) => {
     if (nodeId.startsWith('section:')) {
-      const title = nodeId.replace('section:', '')
-      const indexMatch = sectionIndex.find(entry => entry.title === title && Boolean(filesMap[entry.file]))
+      const indexMatch = sectionIndex.find(entry => (entry.entityId ?? `section:${entry.title}`) === nodeId && Boolean(filesMap[entry.file]))
       if (indexMatch) {
         setActiveFile(indexMatch.file)
         setCursorTarget({ line: indexMatch.line, col: indexMatch.col, nonce: Date.now() })
         return
       }
+      const title = nodeId.split(':').slice(-1)[0] ?? ''
       const sectionNeedles = [`section "${title}"`, `@title "${title}"`, `@title '${title}'`]
 
       const targetFile = Object.values(filesMap).find(file => sectionNeedles.some(needle => file.content.includes(needle)))
@@ -648,10 +689,20 @@ export function IdePage(): JSX.Element {
     }
 
     if (nodeId.startsWith('scene:')) {
-      const sceneName = nodeId.replace('scene:', '')
-      const sceneMatch = sceneIndex.find(scene => scene.name === sceneName && Boolean(filesMap[scene.file]))
+      const sceneMatch = sceneIndex.find(scene => (scene.entityId ?? `scene:${scene.name}`) === nodeId && Boolean(filesMap[scene.file]))
       if (sceneMatch) {
         handleOpenScene(sceneMatch)
+        return
+      }
+      const sceneName = nodeId.split(':').slice(-1)[0] ?? ''
+      const byName = sceneIndex.find(scene => scene.name === sceneName && Boolean(filesMap[scene.file]))
+      if (byName) {
+        handleOpenScene(byName)
+        return
+      }
+      const sceneBySerial = sceneIndex.find(scene => String(scene.serial) === sceneName && Boolean(filesMap[scene.file]))
+      if (sceneBySerial) {
+        handleOpenScene(sceneBySerial)
         return
       }
     }
@@ -685,6 +736,8 @@ export function IdePage(): JSX.Element {
         sectionSerial: null,
         choiceId: null
       })
+      setAuthorMode(AUTHOR_MODE_V1_ENABLED ? 'storyboard' : 'source')
+      setStoryboardLayout({ nodes: {}, lanes: {}, zoom: 1 })
       setRuntimeDebugState({ snapshot: null, lastUpdatedAt: null })
       saveCheckpoint()
     } catch (err) {
@@ -747,6 +800,8 @@ export function IdePage(): JSX.Element {
           sectionSerial: null,
           choiceId: null
         })
+        setAuthorMode(AUTHOR_MODE_V1_ENABLED ? 'storyboard' : 'source')
+        setStoryboardLayout(bundle.metadata?.storyboardLayout ?? { nodes: {}, lanes: {}, zoom: 1 })
         setRuntimeDebugState({ snapshot: null, lastUpdatedAt: null })
       } catch (err) {
         window.alert(String((err as Error).message ?? err))
@@ -760,10 +815,13 @@ export function IdePage(): JSX.Element {
     const bundle: WorkspaceBundle = {
       version: 1,
       manifest,
-      files: snapshot
+      files: snapshot,
+      metadata: {
+        storyboardLayout
+      }
     }
     downloadBundle(bundle, `${manifest.name.replace(/\s+/g, '-').toLowerCase() || 'if-project'}.ifproj.json`)
-  }, [manifest, snapshot])
+  }, [manifest, snapshot, storyboardLayout])
 
   const handleNewFile = useCallback(() => {
     const requested = window.prompt('New file path (relative or /workspace/...):', '/workspace/chapter-1.partial.if')
@@ -816,6 +874,17 @@ export function IdePage(): JSX.Element {
     }
 
     if (panelId === 'editor') {
+      if (authorMode === 'storyboard') {
+        return (
+          <StoryboardPane
+            sectionIndex={sectionIndex}
+            sceneIndex={sceneIndex}
+            graph={graph}
+            onOpenSection={handleOpenSection}
+            onOpenScene={handleOpenScene}
+          />
+        )
+      }
       return (
         <EditorPane
           file={activeFile}
@@ -919,6 +988,7 @@ export function IdePage(): JSX.Element {
     activeFile,
     activeFilePath,
     addRuntimeEvent,
+    authorMode,
     authoringSchema,
     choiceIndex,
     clearRuntimeEvents,
@@ -1064,6 +1134,24 @@ export function IdePage(): JSX.Element {
         kind: 'command',
         keywords: ['panel', 'layout', 'show'],
         run: showAllPanels
+      },
+      {
+        id: 'cmd-mode-storyboard',
+        title: 'Switch to Storyboard Mode',
+        category: 'Authoring',
+        shortcut: 'Palette',
+        kind: 'command',
+        keywords: ['author', 'storyboard', 'visual'],
+        run: switchToStoryboardMode
+      },
+      {
+        id: 'cmd-mode-source',
+        title: 'Switch to Source Mode',
+        category: 'Authoring',
+        shortcut: 'Palette',
+        kind: 'command',
+        keywords: ['author', 'source', 'editor'],
+        run: switchToSourceMode
       }
     ]
     const panelCommandItems: CommandPaletteItem[] = TOGGLABLE_PANEL_IDS.map((panelId) => {
@@ -1119,7 +1207,7 @@ export function IdePage(): JSX.Element {
     })
 
     return [...commandItems, ...panelCommandItems, ...fileItems, ...sectionItems, ...sceneItems]
-  }, [exportBundle, filesByRecency, handleNewFile, handleOpenScene, handleOpenSection, handlePlaytest, importBundle, openDirectory, openPalette, panelVisibility, runCheck, saveLocal, sceneIndex, sectionIndex, setActiveFile, showAllPanels, togglePanelVisibility])
+  }, [exportBundle, filesByRecency, handleNewFile, handleOpenScene, handleOpenSection, handlePlaytest, importBundle, openDirectory, openPalette, panelVisibility, runCheck, saveLocal, sceneIndex, sectionIndex, setActiveFile, showAllPanels, switchToSourceMode, switchToStoryboardMode, togglePanelVisibility])
 
   useKeyboardShortcuts({
     onCommandPalette: toggleCommandPalette,
@@ -1148,6 +1236,8 @@ export function IdePage(): JSX.Element {
         onExportBundle={exportBundle}
         onResetLayout={resetLayout}
         onToggleTheme={toggleTheme}
+        authorMode={authorMode}
+        onToggleAuthorMode={toggleAuthorMode}
         onCommandPalette={toggleCommandPalette}
         panelToggleItems={TOGGLABLE_PANEL_IDS.map(panelId => ({
           id: panelId,
