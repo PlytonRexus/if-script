@@ -191,6 +191,38 @@ button {
   flex: 1;
 }
 
+.section-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.sidebar-modes {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.45rem 0.45rem 0;
+}
+
+.sidebar-section-filter {
+  padding: 0.35rem 0.45rem 0;
+}
+
+.sidebar-section-filter input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel-strong);
+  color: var(--text-main);
+  padding: 0.36rem 0.45rem;
+  font-size: 0.74rem;
+}
+
 .file-item {
   width: 100%;
   text-align: left;
@@ -229,6 +261,52 @@ button {
 .dirty-dot {
   color: var(--warn);
   font-weight: 800;
+}
+
+.section-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel-strong);
+  color: var(--text-main);
+  padding: 0.42rem 0.48rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.section-item.active {
+  border-color: var(--accent-2);
+}
+
+.section-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.section-path {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.section-badges {
+  display: flex;
+  gap: 0.24rem;
+  flex-wrap: wrap;
+}
+
+.section-badge {
+  font-size: 0.63rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.08rem 0.35rem;
+  text-transform: lowercase;
+}
+
+.section-badge.warn {
+  border-color: color-mix(in srgb, var(--warn) 68%, transparent 32%);
+  color: var(--warn);
 }
 
 .editor-pane {
@@ -485,14 +563,30 @@ button {
 
 .diagnostic-item {
   width: 100%;
-  text-align: left;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg-panel-strong);
   color: var(--text-main);
-  padding: 0.45rem;
+  padding: 0.3rem;
   display: grid;
   gap: 0.18rem;
+}
+
+.diagnostic-main {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0.15rem;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.diagnostic-fix-btn {
+  justify-self: start;
+  margin: 0.12rem 0.15rem 0.1rem;
+  font-size: 0.72rem;
 }
 
 .diag-code,

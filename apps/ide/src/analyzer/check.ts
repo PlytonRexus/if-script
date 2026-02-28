@@ -22,10 +22,11 @@ function makeDiagnostic(
     line = null,
     col = null,
     hint = null,
+    data = undefined,
     source = 'analyzer' as const
   }: Partial<IdeDiagnostic> = {}
 ): IdeDiagnostic {
-  return { severity, code, message, file, line, col, hint, source }
+  return { severity, code, message, file, line, col, hint, data, source }
 }
 
 function collectNodes(nodes: any[], visit: (node: any, ctx: { inLoop: boolean, inFunction: boolean }) => void, ctx = { inLoop: false, inFunction: false }): void {
@@ -164,6 +165,10 @@ export function analyzeStory(story: any, inputPath: string): IdeDiagnostic[] {
   if (startAt !== undefined && startAt !== null && startAt !== '' && !isResolvableSectionRef(startAt, sectionSerials, sectionTitleSet)) {
     diagnostics.push(makeDiagnostic('error', 'START_AT_UNRESOLVED', `@startAt points to unknown section target "${startAt}".`, {
       file: inputPath,
+      data: {
+        kind: 'start_at_unresolved',
+        target: String(startAt)
+      },
       hint: 'Set @startAt to an existing section serial or title.'
     }))
   }
@@ -211,6 +216,11 @@ export function analyzeStory(story: any, inputPath: string): IdeDiagnostic[] {
     if (!exists) {
       diagnostics.push(makeDiagnostic('error', 'CHOICE_TARGET_UNRESOLVED', `Choice in section ${section.serial} points to unknown ${isScene ? 'scene' : 'section'} target "${target}".`, {
         file: inputPath,
+        data: {
+          kind: isScene ? 'missing_scene_target' : 'missing_section_target',
+          target: String(target),
+          sourceSectionSerial: typeof section.serial === 'number' ? section.serial : undefined
+        },
         hint: isScene ? 'Create the scene or update @target/@targetType.' : 'Create the section or update @target.'
       }))
     }

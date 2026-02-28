@@ -31,6 +31,11 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
+function pushRecentPath(paths: string[], target: string, max = 40): string[] {
+  const next = [target, ...paths.filter(path => path !== target)]
+  return next.slice(0, max)
+}
+
 function defaultWorkspace(): { manifest: WorkspaceManifest, files: Record<string, WorkspaceFile>, activeFilePath: string } {
   const path = '/workspace/main.if'
   const manifest: WorkspaceManifest = {
@@ -68,6 +73,7 @@ interface IdeState {
   parseStatus: 'idle' | 'running' | 'error' | 'ok'
   parseRequestId: number
   parseTimings: { parseMs: number, analyzeMs: number, totalMs: number }
+  recentFilePaths: string[]
   commandPaletteOpen: boolean
   theme: 'day' | 'night'
   runtimeEvents: RuntimeEventEntry[]
@@ -101,6 +107,7 @@ interface IdeState {
   triggerPlaytest: () => void
   setAliases: (aliases: Record<string, string>) => void
   setStorageMode: (storageMode: WorkspaceManifest['storageMode']) => void
+  setRecentFilePaths: (paths: string[]) => void
 }
 
 const initial = defaultWorkspace()
@@ -117,6 +124,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
   parseStatus: 'idle',
   parseRequestId: 0,
   parseTimings: { parseMs: 0, analyzeMs: 0, totalMs: 0 },
+  recentFilePaths: [initial.activeFilePath],
   commandPaletteOpen: false,
   theme: 'day',
   runtimeEvents: [],
@@ -138,13 +146,17 @@ export const useIdeStore = create<IdeState>((set, get) => ({
       variableCatalog: [],
       sectionVariableNamesBySerial: {},
       parseStatus: 'idle',
-      runtimeEvents: []
+      runtimeEvents: [],
+      recentFilePaths: [activeFilePath ?? manifest.rootFile]
     })
   },
 
   setActiveFile: (path) => {
     if (!get().files[path]) return
-    set({ activeFilePath: path })
+    set(state => ({
+      activeFilePath: path,
+      recentFilePaths: pushRecentPath(state.recentFilePaths, path)
+    }))
   },
 
   setRootFile: (path) => {
@@ -194,6 +206,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
     set(state => ({
       files: { ...state.files, [path]: file },
       activeFilePath: path,
+      recentFilePaths: pushRecentPath(state.recentFilePaths, path),
       manifest: {
         ...state.manifest,
         files: sortWorkspacePaths([...state.manifest.files, path]),
@@ -215,6 +228,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
     set(state => ({
       files: nextFiles,
       activeFilePath: state.activeFilePath === oldPath ? normalizedNext : state.activeFilePath,
+      recentFilePaths: state.recentFilePaths.map(path => (path === oldPath ? normalizedNext : path)),
       manifest: {
         ...state.manifest,
         rootFile: state.manifest.rootFile === oldPath ? normalizedNext : state.manifest.rootFile,
@@ -237,7 +251,8 @@ export const useIdeStore = create<IdeState>((set, get) => ({
       set({
         manifest: fallback.manifest,
         files: fallback.files,
-        activeFilePath: fallback.activeFilePath
+        activeFilePath: fallback.activeFilePath,
+        recentFilePaths: [fallback.activeFilePath]
       })
       return
     }
@@ -245,6 +260,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
     set(state => ({
       files: nextFiles,
       activeFilePath: state.activeFilePath === path ? nextActive : state.activeFilePath,
+      recentFilePaths: pushRecentPath(state.recentFilePaths.filter(entry => entry !== path), nextActive),
       manifest: {
         ...state.manifest,
         rootFile: state.manifest.rootFile === path ? nextActive : state.manifest.rootFile,
@@ -337,6 +353,15 @@ export const useIdeStore = create<IdeState>((set, get) => ({
         updatedAt: nowIso()
       }
     }))
+  },
+
+  setRecentFilePaths: (paths) => {
+    const existing = new Set(Object.keys(get().files))
+    const filtered = paths.filter(path => existing.has(path))
+    const fallback = get().activeFilePath
+    set({
+      recentFilePaths: filtered.length > 0 ? filtered : [fallback]
+    })
   }
 }))
 

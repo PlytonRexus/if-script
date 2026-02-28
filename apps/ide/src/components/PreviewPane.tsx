@@ -55,6 +55,8 @@ interface PreviewPaneProps {
   onDeleteVariablePreset: (presetId: string) => void
   previewAutoFollow: boolean
   onPreviewAutoFollowChange: (next: boolean) => void
+  previewPinned: boolean
+  onTogglePreviewPin: () => void
   playtestNonce: number
   onRuntimeEvent: (entry: RuntimeEventEntry) => void
 }
@@ -79,6 +81,8 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
     onDeleteVariablePreset,
     previewAutoFollow,
     onPreviewAutoFollowChange,
+    previewPinned,
+    onTogglePreviewPin,
     playtestNonce,
     onRuntimeEvent
   } = props
@@ -92,8 +96,6 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
     variableOverrideText,
     onRuntimeEvent
   })
-  const lastManualNonceRef = useRef(playtestNonce)
-  const previousAutoFollowRef = useRef(previewAutoFollow)
   const [status, setStatus] = useState('idle')
   const [message, setMessage] = useState('Move the cursor inside a section to mount preview.')
   const [editorMode, setEditorMode] = useState<PreviewEditorMode>('form')
@@ -152,13 +154,6 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
   }, [focusedSection?.serial])
 
   useEffect(() => {
-    if (previousAutoFollowRef.current && !previewAutoFollow) {
-      lastManualNonceRef.current = playtestNonce
-    }
-    previousAutoFollowRef.current = previewAutoFollow
-  }, [playtestNonce, previewAutoFollow])
-
-  useEffect(() => {
     let cancelled = false
     if (!focusedSection) {
       setStatus('idle')
@@ -176,14 +171,6 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
       return
     }
     if (!startOptions) return
-
-    if (!previewAutoFollow) {
-      if (playtestNonce === lastManualNonceRef.current) {
-        setMessage(`Auto-follow is off. Press Playtest to refresh "${focusedSection.title}".`)
-        return
-      }
-      lastManualNonceRef.current = playtestNonce
-    }
 
     const run = async () => {
       if (!previewRef.current) return
@@ -422,13 +409,16 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
             />
             <span>Auto-follow</span>
           </label>
+          <button type="button" className={['mini-btn', previewPinned ? 'active' : ''].join(' ').trim()} onClick={onTogglePreviewPin}>
+            {previewPinned ? 'Unpin Section' : 'Pin Section'}
+          </button>
           <span className={`status-pill status-${status === 'running' ? 'running' : status === 'ok' ? 'ok' : status === 'error' ? 'error' : 'idle'}`}>{status}</span>
         </div>
       </div>
 
       <p className="preview-section-context">
         {focusedSection
-          ? `Previewing: ${focusedSection.title} (line ${focusedSection.line})`
+          ? `Previewing: ${focusedSection.title} (line ${focusedSection.line})${previewPinned ? ' [pinned]' : ''}`
           : 'Previewing: none'}
       </p>
       <p className="preview-message">{message}</p>

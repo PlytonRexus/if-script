@@ -17,6 +17,7 @@ import { basename, sortWorkspacePaths, toWorkspacePath } from '../lib/path'
 import { buildSectionPreviewKey, resolveSectionAtCursor } from '../preview/sectionPreview'
 import { createWorkspaceFromFileMap, useIdeStore } from '../store/workspaceStore'
 import type {
+  CommandPaletteMode,
   CommandPaletteItem,
   IdeDiagnostic,
   PanelId,
@@ -40,10 +41,15 @@ interface PersistedWorkspace {
   manifest: WorkspaceManifest
   files: Record<string, WorkspaceFile>
   activeFilePath: string
+  recentFilePaths?: string[]
   theme: 'day' | 'night'
   layoutVersion?: number
   layout?: PanelLayoutState
   sectionPreviewOverrides?: Record<string, string>
+  previewMode?: {
+    autoFollowCursor: boolean
+    pinnedSectionKey: string | null
+  }
   previewAutoFollow?: boolean
   sectionVariablePresets?: Record<string, VariablePreset[]>
 }
@@ -78,6 +84,7 @@ export function IdePage(): JSX.Element {
   const sectionVariableNamesBySerial = useIdeStore(state => state.sectionVariableNamesBySerial)
   const parseStatus = useIdeStore(state => state.parseStatus)
   const parseTimings = useIdeStore(state => state.parseTimings)
+  const recentFilePaths = useIdeStore(state => state.recentFilePaths)
   const commandPaletteOpen = useIdeStore(state => state.commandPaletteOpen)
   const theme = useIdeStore(state => state.theme)
   const fsRootHandle = useIdeStore(state => state.fsRootHandle)
@@ -86,6 +93,7 @@ export function IdePage(): JSX.Element {
 
   const setWorkspace = useIdeStore(state => state.setWorkspace)
   const setActiveFile = useIdeStore(state => state.setActiveFile)
+  const setRecentFilePaths = useIdeStore(state => state.setRecentFilePaths)
   const setRootFile = useIdeStore(state => state.setRootFile)
   const setFileContent = useIdeStore(state => state.setFileContent)
   const createFile = useIdeStore(state => state.createFile)
@@ -107,8 +115,10 @@ export function IdePage(): JSX.Element {
   const [cursorPosition, setCursorPosition] = useState<{ line: number, col: number } | null>(null)
   const [sectionPreviewOverrides, setSectionPreviewOverrides] = useState<Record<string, string>>({})
   const [sectionVariablePresets, setSectionVariablePresets] = useState<Record<string, VariablePreset[]>>({})
-  const [previewAutoFollow, setPreviewAutoFollow] = useState(false)
+  const [previewAutoFollow, setPreviewAutoFollow] = useState(true)
+  const [previewPinnedSectionKey, setPreviewPinnedSectionKey] = useState<string | null>(null)
   const [previewAnchorSectionKey, setPreviewAnchorSectionKey] = useState<string | null>(null)
+  const [commandPaletteMode, setCommandPaletteMode] = useState<CommandPaletteMode>('all')
   const [panelLayout, setPanelLayout] = useState<PanelLayoutState>(() => getDefaultDesktopLayout())
   const [desktopMode, setDesktopMode] = useState<boolean>(() => readDesktopMode())
   const workspaceLayoutRef = useRef<HTMLElement | null>(null)
@@ -135,15 +145,37 @@ export function IdePage(): JSX.Element {
     return out
   }, [sectionIndex])
   const previewSection = useMemo(() => {
+    if (previewPinnedSectionKey && sectionByKey.has(previewPinnedSectionKey)) {
+      return sectionByKey.get(previewPinnedSectionKey) ?? null
+    }
     if (previewAutoFollow) return cursorFocusedSection
     if (previewAnchorSectionKey && sectionByKey.has(previewAnchorSectionKey)) {
       return sectionByKey.get(previewAnchorSectionKey) ?? null
     }
     return cursorFocusedSection
-  }, [cursorFocusedSection, previewAnchorSectionKey, previewAutoFollow, sectionByKey])
+  }, [cursorFocusedSection, previewAnchorSectionKey, previewAutoFollow, previewPinnedSectionKey, sectionByKey])
   const focusedSectionNodeId = cursorFocusedSection ? `section:${cursorFocusedSection.title}` : null
   const previewSectionKey = previewSection ? buildSectionPreviewKey(previewSection) : null
   const focusedOverrideText = previewSectionKey ? (sectionPreviewOverrides[previewSectionKey] ?? '{}') : '{}'
+  const sectionTitlesForCompletion = useMemo(() => {
+    return sectionIndex.map(section => section.title)
+  }, [sectionIndex])
+  const variableNamesForCompletion = useMemo(() => {
+    return variableCatalog.map(variable => variable.name)
+  }, [variableCatalog])
+  const filesByRecency = useMemo(() => {
+    const seen = new Set<string>()
+    const ordered: WorkspaceFile[] = []
+    recentFilePaths.forEach(path => {
+      if (seen.has(path)) return
+      const file = filesMap[path]
+      if (!file) return
+      seen.add(path)
+      ordered.push(file)
+    })
+    const remaining = files.filter(file => !seen.has(file.path))
+    return [...ordered, ...remaining]
+  }, [files, filesMap, recentFilePaths])
   const focusedPresets = useMemo(() => {
     return previewSectionKey ? (sectionVariablePresets[previewSectionKey] ?? []) : []
   }, [previewSectionKey, sectionVariablePresets])
@@ -153,14 +185,18 @@ export function IdePage(): JSX.Element {
       manifest,
       files: filesMap,
       activeFilePath,
+      recentFilePaths,
       theme,
       layoutVersion: PANEL_LAYOUT_VERSION,
       layout: serializeLayout(layout),
       sectionPreviewOverrides,
-      previewAutoFollow,
+      previewMode: {
+        autoFollowCursor: previewAutoFollow,
+        pinnedSectionKey: previewPinnedSectionKey
+      },
       sectionVariablePresets
     })
-  }, [activeFilePath, filesMap, manifest, previewAutoFollow, sectionPreviewOverrides, sectionVariablePresets, theme])
+  }, [activeFilePath, filesMap, manifest, previewAutoFollow, previewPinnedSectionKey, recentFilePaths, sectionPreviewOverrides, sectionVariablePresets, theme])
 
   const runCheck = useCallback(() => {
     const worker = workerRef.current
@@ -221,16 +257,22 @@ export function IdePage(): JSX.Element {
         files: persisted.files,
         activeFilePath: persisted.activeFilePath
       })
+      setRecentFilePaths(persisted.recentFilePaths ?? [persisted.activeFilePath])
       setTheme(persisted.theme ?? 'day')
       const canRestoreLayout = persisted.layoutVersion == null || persisted.layoutVersion === PANEL_LAYOUT_VERSION
       const restoredLayout = canRestoreLayout ? deserializeLayout(persisted.layout) : null
       setPanelLayout(restoredLayout ?? getDefaultDesktopLayout())
       setSectionPreviewOverrides(persisted.sectionPreviewOverrides ?? {})
-      setPreviewAutoFollow(persisted.previewAutoFollow ?? false)
+      const restoredPreviewMode = persisted.previewMode ?? {
+        autoFollowCursor: persisted.previewAutoFollow ?? true,
+        pinnedSectionKey: null
+      }
+      setPreviewAutoFollow(restoredPreviewMode.autoFollowCursor)
+      setPreviewPinnedSectionKey(restoredPreviewMode.pinnedSectionKey ?? null)
       setSectionVariablePresets(persisted.sectionVariablePresets ?? {})
       setPreviewAnchorSectionKey(null)
     })()
-  }, [setTheme, setWorkspace])
+  }, [setRecentFilePaths, setTheme, setWorkspace])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -255,10 +297,17 @@ export function IdePage(): JSX.Element {
 
   useEffect(() => {
     if (previewAutoFollow) return
+    if (previewPinnedSectionKey) return
     if (previewAnchorSectionKey) return
     if (!cursorFocusedSection) return
     setPreviewAnchorSectionKey(buildSectionPreviewKey(cursorFocusedSection))
-  }, [cursorFocusedSection, previewAnchorSectionKey, previewAutoFollow])
+  }, [cursorFocusedSection, previewAnchorSectionKey, previewAutoFollow, previewPinnedSectionKey])
+
+  useEffect(() => {
+    if (!previewPinnedSectionKey) return
+    if (sectionByKey.has(previewPinnedSectionKey)) return
+    setPreviewPinnedSectionKey(null)
+  }, [previewPinnedSectionKey, sectionByKey])
 
   useEffect(() => {
     if (playtestNonce === 0) return
@@ -325,16 +374,23 @@ export function IdePage(): JSX.Element {
     }
 
     setPreviewAutoFollow(true)
+    setPreviewPinnedSectionKey(null)
     setPreviewAnchorSectionKey(null)
   }, [cursorFocusedSection, previewSection])
 
-  const handlePlaytest = useCallback(() => {
-    const anchorSection = cursorFocusedSection ?? previewSection
-    if (anchorSection) {
-      setPreviewAnchorSectionKey(buildSectionPreviewKey(anchorSection))
+  const handleTogglePreviewPin = useCallback(() => {
+    if (previewPinnedSectionKey) {
+      setPreviewPinnedSectionKey(null)
+      return
     }
+
+    if (!previewSectionKey) return
+    setPreviewPinnedSectionKey(previewSectionKey)
+  }, [previewPinnedSectionKey, previewSectionKey])
+
+  const handlePlaytest = useCallback(() => {
     triggerPlaytest()
-  }, [cursorFocusedSection, previewSection, triggerPlaytest])
+  }, [triggerPlaytest])
 
   const jumpToDiagnostic = useCallback((diagnostic: IdeDiagnostic) => {
     const targetFile = diagnostic.file
@@ -348,6 +404,50 @@ export function IdePage(): JSX.Element {
       nonce: Date.now()
     })
   }, [filesMap, setActiveFile])
+
+  const handleOpenSection = useCallback((section: { file: string, line: number, col: number }) => {
+    if (filesMap[section.file]) {
+      setActiveFile(section.file)
+    }
+    setCursorTarget({
+      line: section.line,
+      col: section.col,
+      nonce: Date.now()
+    })
+  }, [filesMap, setActiveFile])
+
+  const handleApplyDiagnosticQuickFix = useCallback((diagnostic: IdeDiagnostic) => {
+    const quickFix = diagnostic.data
+    const target = quickFix?.target?.trim()
+    if (!target) return
+    if (quickFix?.kind !== 'missing_section_target' && quickFix?.kind !== 'start_at_unresolved') return
+
+    const existingSection = sectionIndex.find(section => section.title === target)
+    if (existingSection) {
+      handleOpenSection(existingSection)
+      return
+    }
+
+    const preferredFile = activeFile?.path && filesMap[activeFile.path] ? activeFile.path : manifest.rootFile
+    if (!filesMap[preferredFile]) return
+
+    const accepted = window.confirm(`Create missing section "${target}" in ${preferredFile}?`)
+    if (!accepted) return
+
+    const currentContent = filesMap[preferredFile].content
+    const separator = currentContent.trimEnd().length === 0 ? '' : '\n\n'
+    const scaffold = `section "${target}"\n  "${target}."\nend\n`
+    const nextContent = `${currentContent.replace(/\s*$/, '')}${separator}${scaffold}`
+    const line = currentContent.split(/\r?\n/).length + (separator ? 2 : 0)
+
+    setFileContent(preferredFile, nextContent)
+    setActiveFile(preferredFile)
+    setCursorTarget({
+      line: Math.max(1, line),
+      col: 1,
+      nonce: Date.now()
+    })
+  }, [activeFile?.path, filesMap, handleOpenSection, manifest.rootFile, sectionIndex, setActiveFile, setFileContent])
 
   const jumpToGraphNode = useCallback((nodeId: string) => {
     if (nodeId.startsWith('section:')) {
@@ -389,7 +489,8 @@ export function IdePage(): JSX.Element {
       setStorageMode('fs-access')
       setSectionPreviewOverrides({})
       setSectionVariablePresets({})
-      setPreviewAutoFollow(false)
+      setPreviewAutoFollow(true)
+      setPreviewPinnedSectionKey(null)
       setPreviewAnchorSectionKey(null)
       saveCheckpoint()
     } catch (err) {
@@ -443,7 +544,8 @@ export function IdePage(): JSX.Element {
         setStorageMode('local-only')
         setSectionPreviewOverrides({})
         setSectionVariablePresets({})
-        setPreviewAutoFollow(false)
+        setPreviewAutoFollow(true)
+        setPreviewPinnedSectionKey(null)
         setPreviewAnchorSectionKey(null)
       } catch (err) {
         window.alert(String((err as Error).message ?? err))
@@ -493,7 +595,10 @@ export function IdePage(): JSX.Element {
           files={files}
           activeFilePath={activeFilePath}
           rootFile={manifest.rootFile}
+          sectionIndex={sectionIndex}
+          graph={graph}
           onOpenFile={setActiveFile}
+          onOpenSection={handleOpenSection}
           onSetRootFile={setRootFile}
         />
       )
@@ -504,6 +609,9 @@ export function IdePage(): JSX.Element {
         <EditorPane
           file={activeFile}
           diagnostics={diagnostics}
+          parseStatus={parseStatus}
+          sectionTitles={sectionTitlesForCompletion}
+          variableNames={variableNamesForCompletion}
           cursorTarget={cursorTarget}
           onCursorChange={setCursorPosition}
           onChange={(next) => {
@@ -531,6 +639,8 @@ export function IdePage(): JSX.Element {
           onDeleteVariablePreset={deleteSectionPreset}
           previewAutoFollow={previewAutoFollow}
           onPreviewAutoFollowChange={handlePreviewAutoFollowChange}
+          previewPinned={Boolean(previewPinnedSectionKey)}
+          onTogglePreviewPin={handleTogglePreviewPin}
           playtestNonce={playtestNonce}
           onRuntimeEvent={(entry: RuntimeEventEntry) => addRuntimeEvent(entry)}
         />
@@ -542,7 +652,7 @@ export function IdePage(): JSX.Element {
     }
 
     if (panelId === 'diagnostics') {
-      return <DiagnosticsPanel diagnostics={diagnostics} onJumpToDiagnostic={jumpToDiagnostic} />
+      return <DiagnosticsPanel diagnostics={diagnostics} onJumpToDiagnostic={jumpToDiagnostic} onApplyQuickFix={handleApplyDiagnosticQuickFix} />
     }
 
     if (panelId === 'runtime') {
@@ -568,7 +678,11 @@ export function IdePage(): JSX.Element {
     addRuntimeEvent,
     clearRuntimeEvents,
     cursorTarget,
+    handleApplyDiagnosticQuickFix,
+    handleOpenSection,
+    handleTogglePreviewPin,
     diagnostics,
+    sectionIndex,
     files,
     focusedOverrideText,
     deleteSectionPreset,
@@ -584,9 +698,11 @@ export function IdePage(): JSX.Element {
     parseTimings,
     playtestNonce,
     previewAutoFollow,
+    previewPinnedSectionKey,
     previewSection,
     runtimeEvents,
     saveSectionPreset,
+    sectionTitlesForCompletion,
     sectionVariableNamesBySerial,
     setActiveFile,
     setCursorPosition,
@@ -594,63 +710,123 @@ export function IdePage(): JSX.Element {
     setRootFile,
     snapshot,
     updateFocusedSectionOverrides,
-    variableCatalog
+    variableCatalog,
+    variableNamesForCompletion
   ])
 
-  const commands: CommandPaletteItem[] = useMemo(() => [
-    {
-      id: 'cmd-check',
-      title: 'Run Diagnostics Check',
-      category: 'Authoring',
-      shortcut: 'Ctrl+Shift+P, type check',
-      run: runCheck
-    },
-    {
-      id: 'cmd-playtest',
-      title: 'Run Playtest',
-      category: 'Playtest',
-      shortcut: 'Ctrl+Enter',
-      run: handlePlaytest
-    },
-    {
-      id: 'cmd-new-file',
-      title: 'Create File',
-      category: 'Workspace',
-      shortcut: 'Palette',
-      run: handleNewFile
-    },
-    {
-      id: 'cmd-save-local',
-      title: 'Save Local Snapshot',
-      category: 'Workspace',
-      shortcut: 'Ctrl+S',
-      run: saveLocal
-    },
-    {
-      id: 'cmd-open-folder',
-      title: 'Open Folder Workspace',
-      category: 'Workspace',
-      shortcut: 'Palette',
-      run: () => { void openDirectory() }
-    },
-    {
-      id: 'cmd-export',
-      title: 'Export Bundle (.ifproj.json)',
-      category: 'Workspace',
-      shortcut: 'Palette',
-      run: exportBundle
-    },
-    {
-      id: 'cmd-import',
-      title: 'Import Bundle (.ifproj.json)',
-      category: 'Workspace',
-      shortcut: 'Palette',
-      run: () => { void importBundle() }
+  const openPalette = useCallback((mode: CommandPaletteMode) => {
+    setCommandPaletteMode(mode)
+    setCommandPaletteOpen(true)
+  }, [setCommandPaletteOpen])
+
+  const toggleCommandPalette = useCallback(() => {
+    if (commandPaletteOpen && commandPaletteMode === 'all') {
+      setCommandPaletteOpen(false)
+      return
     }
-  ], [exportBundle, handleNewFile, handlePlaytest, importBundle, openDirectory, runCheck, saveLocal])
+    openPalette('all')
+  }, [commandPaletteMode, commandPaletteOpen, openPalette, setCommandPaletteOpen])
+
+  const commands: CommandPaletteItem[] = useMemo(() => {
+    const commandItems: CommandPaletteItem[] = [
+      {
+        id: 'cmd-check',
+        title: 'Run Diagnostics Check',
+        category: 'Authoring',
+        shortcut: 'Ctrl+Shift+P, type check',
+        kind: 'command',
+        keywords: ['check', 'diagnostics', 'parse'],
+        run: runCheck
+      },
+      {
+        id: 'cmd-playtest',
+        title: 'Run Playtest',
+        category: 'Playtest',
+        shortcut: 'Ctrl+Enter',
+        kind: 'command',
+        keywords: ['preview', 'runtime'],
+        run: handlePlaytest
+      },
+      {
+        id: 'cmd-new-file',
+        title: 'Create File',
+        category: 'Workspace',
+        shortcut: 'Palette',
+        kind: 'command',
+        keywords: ['new', 'file'],
+        run: handleNewFile
+      },
+      {
+        id: 'cmd-save-local',
+        title: 'Save Local Snapshot',
+        category: 'Workspace',
+        shortcut: 'Ctrl+S',
+        kind: 'command',
+        keywords: ['save', 'snapshot'],
+        run: saveLocal
+      },
+      {
+        id: 'cmd-open-folder',
+        title: 'Open Folder Workspace',
+        category: 'Workspace',
+        shortcut: 'Palette',
+        kind: 'command',
+        keywords: ['folder', 'open'],
+        run: () => { void openDirectory() }
+      },
+      {
+        id: 'cmd-export',
+        title: 'Export Bundle (.ifproj.json)',
+        category: 'Workspace',
+        shortcut: 'Palette',
+        kind: 'command',
+        keywords: ['export', 'bundle'],
+        run: exportBundle
+      },
+      {
+        id: 'cmd-import',
+        title: 'Import Bundle (.ifproj.json)',
+        category: 'Workspace',
+        shortcut: 'Palette',
+        kind: 'command',
+        keywords: ['import', 'bundle'],
+        run: () => { void importBundle() }
+      }
+    ]
+
+    const fileItems: CommandPaletteItem[] = filesByRecency.map((file) => {
+      const relative = file.path.replace('/workspace/', '')
+      return {
+        id: `file:${file.path}`,
+        title: relative,
+        category: 'File',
+        shortcut: 'Ctrl+P',
+        kind: 'file',
+        keywords: [file.path, basename(file.path)],
+        run: () => setActiveFile(file.path)
+      }
+    })
+
+    const sectionItems: CommandPaletteItem[] = sectionIndex.map((section) => {
+      const relative = section.file.replace('/workspace/', '')
+      return {
+        id: `section:${section.file}:${section.line}:${section.serial}`,
+        title: section.title,
+        category: `Section (${relative}:${section.line})`,
+        shortcut: 'Ctrl+Shift+O',
+        kind: 'section',
+        keywords: [relative, section.title],
+        run: () => handleOpenSection(section)
+      }
+    })
+
+    return [...commandItems, ...fileItems, ...sectionItems]
+  }, [exportBundle, filesByRecency, handleNewFile, handleOpenSection, handlePlaytest, importBundle, openDirectory, runCheck, saveLocal, sectionIndex, setActiveFile])
 
   useKeyboardShortcuts({
-    onCommandPalette: () => setCommandPaletteOpen(!commandPaletteOpen),
+    onCommandPalette: toggleCommandPalette,
+    onQuickOpenFiles: () => openPalette('files'),
+    onQuickOpenSections: () => openPalette('sections'),
     onSave: saveLocal,
     onPlaytest: handlePlaytest
   })
@@ -673,7 +849,7 @@ export function IdePage(): JSX.Element {
         onExportBundle={exportBundle}
         onResetLayout={resetLayout}
         onToggleTheme={toggleTheme}
-        onCommandPalette={() => setCommandPaletteOpen(!commandPaletteOpen)}
+        onCommandPalette={toggleCommandPalette}
       />
 
       <main className="workspace-layout" ref={workspaceLayoutRef}>
@@ -709,7 +885,7 @@ export function IdePage(): JSX.Element {
         )}
       </main>
 
-      <CommandPalette open={commandPaletteOpen} items={commands} onClose={() => setCommandPaletteOpen(false)} />
+      <CommandPalette mode={commandPaletteMode} open={commandPaletteOpen} items={commands} onClose={() => setCommandPaletteOpen(false)} />
     </div>
   )
 }

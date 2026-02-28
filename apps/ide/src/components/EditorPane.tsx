@@ -6,7 +6,7 @@ import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
 import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
-import { IF_SCRIPT_LANGUAGE_ID, registerIfScriptLanguage } from '../monaco/ifLanguage'
+import { IF_SCRIPT_LANGUAGE_ID, registerIfScriptLanguage, setIfScriptCompletionContext } from '../monaco/ifLanguage'
 import type { IdeDiagnostic, WorkspaceFile } from '../types/interfaces'
 
 const monacoEnv = self as typeof self & {
@@ -38,6 +38,9 @@ interface CursorTarget {
 interface EditorPaneProps {
   file: WorkspaceFile | null
   diagnostics: IdeDiagnostic[]
+  parseStatus: 'idle' | 'running' | 'error' | 'ok'
+  sectionTitles: string[]
+  variableNames: string[]
   cursorTarget: CursorTarget | null
   onCursorChange?: (position: { line: number, col: number }) => void
   onChange: (next: string) => void
@@ -103,6 +106,14 @@ export function EditorPane(props: EditorPaneProps): JSX.Element {
 
     monacoRef.current.editor.setModelMarkers(model, 'ifscript-diagnostics', markers)
   }, [activeDiagnostics, props.file])
+
+  useEffect(() => {
+    setIfScriptCompletionContext({
+      parseStatus: props.parseStatus,
+      sectionTitles: props.sectionTitles,
+      variableNames: props.variableNames
+    })
+  }, [props.parseStatus, props.sectionTitles, props.variableNames])
 
   useEffect(() => {
     if (!props.cursorTarget || !editorRef.current) return

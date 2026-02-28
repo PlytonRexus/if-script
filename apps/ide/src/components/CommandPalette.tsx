@@ -1,10 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { CommandPaletteItem } from '../types/interfaces'
+import type { CommandPaletteItem, CommandPaletteMode } from '../types/interfaces'
 
 interface CommandPaletteProps {
   open: boolean
+  mode: CommandPaletteMode
   items: CommandPaletteItem[]
   onClose: () => void
+}
+
+function modeToKind(mode: CommandPaletteMode): CommandPaletteItem['kind'] | null {
+  if (mode === 'files') return 'file'
+  if (mode === 'sections') return 'section'
+  return null
+}
+
+function itemSearchText(item: CommandPaletteItem): string {
+  return [
+    item.title,
+    item.category,
+    item.shortcut,
+    ...(item.keywords ?? [])
+  ].join(' ').toLowerCase()
 }
 
 export function CommandPalette(props: CommandPaletteProps): JSX.Element | null {
@@ -19,10 +35,35 @@ export function CommandPalette(props: CommandPaletteProps): JSX.Element | null {
   }, [props.open])
 
   const filtered = useMemo(() => {
+    const modeKind = modeToKind(props.mode)
+    const base = modeKind ? props.items.filter(item => item.kind === modeKind) : props.items
     const q = query.trim().toLowerCase()
-    if (q === '') return props.items
-    return props.items.filter(item => `${item.title} ${item.category} ${item.shortcut}`.toLowerCase().includes(q))
-  }, [props.items, query])
+    if (q === '') return base
+
+    return base
+      .map((item, index) => {
+        const text = itemSearchText(item)
+        const title = item.title.toLowerCase()
+        const keywordPrefix = (item.keywords ?? []).some(keyword => keyword.toLowerCase().startsWith(q))
+
+        let rank = 99
+        if (title.startsWith(q) || keywordPrefix) rank = 0
+        else if (text.includes(q)) rank = 1
+
+        return { item, rank, index }
+      })
+      .filter(entry => entry.rank < 99)
+      .sort((a, b) => {
+        if (a.rank !== b.rank) return a.rank - b.rank
+        return a.index - b.index
+      })
+      .map(entry => entry.item)
+  }, [props.items, props.mode, query])
+
+  useEffect(() => {
+    setQuery('')
+    setSelected(0)
+  }, [props.mode])
 
   useEffect(() => {
     if (!props.open) return
@@ -65,7 +106,7 @@ export function CommandPalette(props: CommandPaletteProps): JSX.Element | null {
         <input
           autoFocus
           className="command-input"
-          placeholder="Type a command"
+          placeholder={props.mode === 'files' ? 'Quick open files...' : props.mode === 'sections' ? 'Quick open sections...' : 'Type a command'}
           value={query}
           onChange={(event) => {
             setQuery(event.currentTarget.value)

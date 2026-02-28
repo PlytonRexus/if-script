@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 
 interface ShortcutHandlers {
   onCommandPalette: () => void
+  onQuickOpenFiles: () => void
+  onQuickOpenSections: () => void
   onSave: () => void
   onPlaytest: () => void
 }
@@ -15,6 +17,16 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers): void {
       if (hasPrimaryMod && key === 'k') {
         event.preventDefault()
         handlers.onCommandPalette()
+      }
+
+      if (hasPrimaryMod && key === 'p') {
+        event.preventDefault()
+        handlers.onQuickOpenFiles()
+      }
+
+      if (hasPrimaryMod && event.shiftKey && key === 'o') {
+        event.preventDefault()
+        handlers.onQuickOpenSections()
       }
 
       if (hasPrimaryMod && key === 's') {

@@ -11,7 +11,11 @@ IF-Script IDE vNext (React + TypeScript + Vite).
 - Worker-based parse + diagnostics
 - Live runtime playtest via `if-script-core@0.6.1`
 - Story graph explorer with unresolved/dead-end visibility
-- Command palette and keyboard shortcuts
+- Files/Sections workspace navigator with section status badges
+- Command palette quick open (`Ctrl/Cmd+P` files, `Ctrl/Cmd+Shift+O` sections)
+- Context-aware authoring completions (section targets + variables + snippets)
+- Diagnostics quick-fix for creating missing section targets
+- Section preview focus controls (auto-follow + pin section)
 - Workspace persistence via IndexedDB
 - Chromium directory workspace mode via File System Access API
 - Bundle import/export fallback (`.ifproj.json`)

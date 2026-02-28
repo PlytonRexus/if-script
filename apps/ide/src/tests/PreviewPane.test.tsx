@@ -63,6 +63,8 @@ function renderPreviewPane(input?: {
       onDeleteVariablePreset={() => {}}
       previewAutoFollow={false}
       onPreviewAutoFollowChange={input?.onPreviewAutoFollowChange ?? (() => {})}
+      previewPinned={false}
+      onTogglePreviewPin={() => {}}
       playtestNonce={0}
       onRuntimeEvent={() => {}}
     />

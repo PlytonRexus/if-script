@@ -20,6 +20,17 @@ export interface WorkspaceFile {
 
 export type IdeDiagnosticSeverity = 'error' | 'warning' | 'info'
 
+export type IdeDiagnosticDataKind =
+  | 'missing_section_target'
+  | 'missing_scene_target'
+  | 'start_at_unresolved'
+
+export interface IdeDiagnosticData {
+  kind: IdeDiagnosticDataKind
+  target?: string
+  sourceSectionSerial?: number
+}
+
 export interface IdeDiagnostic {
   severity: IdeDiagnosticSeverity
   code: string
@@ -29,6 +40,7 @@ export interface IdeDiagnostic {
   message: string
   hint: string | null
   source: 'parser' | 'analyzer'
+  data?: IdeDiagnosticData
 }
 
 export interface StoryGraphNode {
@@ -107,8 +119,12 @@ export interface CommandPaletteItem {
   title: string
   shortcut: string
   category: string
+  kind?: 'command' | 'file' | 'section'
+  keywords?: string[]
   run: () => void
 }
+
+export type CommandPaletteMode = 'all' | 'files' | 'sections'
 
 export interface WorkspaceBundle {
   version: 1
