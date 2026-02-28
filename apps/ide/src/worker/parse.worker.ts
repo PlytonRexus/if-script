@@ -2,14 +2,13 @@
 import IFScript from 'if-script-core'
 import { analyzeStory } from '../analyzer/check'
 import { buildStoryGraph } from '../graph/buildStoryGraph'
-import { buildSectionVariableNamesBySerial, extractVariableNames, visitSectionNodes } from './variableUsage'
+import { buildSectionVariableNamesBySerial } from './variableUsage'
+import { buildVariableCatalogAndWarnings } from './variableInference'
 import type {
   IdeDiagnostic,
-  InferredVariableType,
   ParseWorkerRequest,
   ParseWorkerResponse,
-  SectionIndexEntry,
-  VariableCatalogEntry
+  SectionIndexEntry
 } from '../types/interfaces'
 
 const globalScope: DedicatedWorkerGlobalScope = self as unknown as DedicatedWorkerGlobalScope
@@ -64,76 +63,20 @@ function buildSectionIndex(story: any, fallbackFile: string): SectionIndexEntry[
   })
 }
 
-function inferTypeFromValue(value: unknown): InferredVariableType {
-  if (Array.isArray(value)) return 'array'
-  if (typeof value === 'number') return 'number'
-  if (typeof value === 'string') return 'string'
-  if (typeof value === 'boolean') return 'boolean'
-  if (value && typeof value === 'object') return 'object'
-  return 'unknown'
-}
-
-function inferTypeFromNode(node: any): InferredVariableType {
-  if (!node || typeof node !== 'object') return 'unknown'
-  if (node._class === 'ArrayLiteral') return 'array'
-  if (node._class === 'Token') {
-    if (node.type === 'NUMBER') return 'number'
-    if (node.type === 'STRING') return 'string'
-    if (node.type === 'BOOLEAN') return 'boolean'
-    return 'unknown'
-  }
-  return inferTypeFromValue(node)
-}
-
-function mergeTypes(current: InferredVariableType, next: InferredVariableType): InferredVariableType {
-  if (current === next) return current
-  if (current === 'unknown') return next
-  if (next === 'unknown') return current
-  return 'unknown'
-}
-
-function buildVariableCatalog(story: any): VariableCatalogEntry[] {
-  const catalog = new Map<string, VariableCatalogEntry>()
-
-  const mergeVariable = (name: string, inferredType: InferredVariableType, defaultValue?: unknown) => {
-    if (!name || name === 'turn') return
-    const existing = catalog.get(name)
-    if (!existing) {
-      const next: VariableCatalogEntry = { name, inferredType }
-      if (defaultValue !== undefined) next.defaultValue = defaultValue
-      catalog.set(name, next)
-      return
-    }
-    existing.inferredType = mergeTypes(existing.inferredType, inferredType)
-    if (existing.defaultValue === undefined && defaultValue !== undefined) {
-      existing.defaultValue = defaultValue
-    }
-  }
-
-  const persistent = story?.persistent ?? story?.variables ?? {}
-  Object.entries(persistent).forEach(([name, value]) => {
-    mergeVariable(name, inferTypeFromValue(value), value)
-  })
-
-  const stats = story?.stats ?? {}
-  Object.keys(stats).forEach(name => {
-    mergeVariable(name, 'unknown')
-  })
-
-  ;(story.sections ?? []).forEach((section: any) => {
-    visitSectionNodes(section, (node) => {
-      if (node?._class === 'Action' && node.type === 'assign') {
-        const names = extractVariableNames(node.left)
-        names.forEach(name => mergeVariable(name, inferTypeFromNode(node.right)))
-      }
-      if (node?._class === 'Choice') {
-        extractVariableNames(node.input).forEach(name => mergeVariable(name, 'string'))
-        extractVariableNames(node.variables).forEach(name => mergeVariable(name, 'string'))
-      }
-    })
-  })
-
-  return Array.from(catalog.values()).sort((a, b) => a.name.localeCompare(b.name))
+function buildVariableInferenceDiagnostics(
+  warnings: Array<{ name: string, inferredTypes: string[] }>,
+  sourceFile: string
+): IdeDiagnostic[] {
+  return warnings.map((warning): IdeDiagnostic => ({
+    severity: 'warning',
+    code: 'VARIABLE_MULTI_TYPE',
+    file: sourceFile,
+    line: null,
+    col: null,
+    message: `Variable "${warning.name}" is inferred as multiple types: ${warning.inferredTypes.join(', ')}.`,
+    hint: 'Consider normalizing this variable to a single type or explicitly handling type changes.',
+    source: 'analyzer'
+  }))
 }
 
 globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
@@ -164,10 +107,13 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
     const parseMs = performance.now() - parseStart
 
     const analyzeStart = performance.now()
-    const diagnostics = analyzeStory(story, request.entryFile)
+    const analyzerDiagnostics = analyzeStory(story, request.entryFile)
     const graph = buildStoryGraph(story)
     const sectionIndex = buildSectionIndex(story, request.entryFile)
-    const variableCatalog = buildVariableCatalog(story)
+    const variableInference = buildVariableCatalogAndWarnings(story)
+    const variableCatalog = variableInference.variableCatalog
+    const variableInferenceDiagnostics = buildVariableInferenceDiagnostics(variableInference.warnings, request.entryFile)
+    const diagnostics = [...analyzerDiagnostics, ...variableInferenceDiagnostics]
     const sectionVariableNamesBySerial = buildSectionVariableNamesBySerial(story)
     const analyzeMs = performance.now() - analyzeStart
 

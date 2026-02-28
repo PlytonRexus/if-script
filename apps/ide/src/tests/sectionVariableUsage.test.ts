@@ -47,4 +47,42 @@ describe('section variable usage', () => {
     expect(buildSectionVariableNamesBySerial(null)).toEqual({})
     expect(buildSectionVariableNamesBySerial({ sections: [] })).toEqual({})
   })
+
+  it('collects nested variables from member access, array access, and function call args', () => {
+    const story = {
+      sections: [
+        {
+          serial: 7,
+          text: [
+            {
+              _class: 'Action',
+              type: 'assign',
+              left: { _class: 'Token', type: 'VARIABLE', symbol: 'score' },
+              right: {
+                _class: 'FunctionCall',
+                name: { _class: 'Token', type: 'VARIABLE', symbol: 'boost' },
+                args: [
+                  {
+                    _class: 'ArrayAccess',
+                    array: { _class: 'Token', type: 'VARIABLE', symbol: 'values' },
+                    index: { _class: 'Token', type: 'VARIABLE', symbol: 'idx' }
+                  },
+                  {
+                    _class: 'MemberAccess',
+                    object: { _class: 'Token', type: 'VARIABLE', symbol: 'player' },
+                    member: 'power',
+                    args: null
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+
+    expect(buildSectionVariableNamesBySerial(story)).toEqual({
+      7: ['idx', 'player', 'score', 'values']
+    })
+  })
 })

@@ -65,6 +65,27 @@ function hasOwnValue(input: Record<string, unknown>, name: string): boolean {
   return Object.prototype.hasOwnProperty.call(input, name)
 }
 
+function runtimeTypeOfValue(value: unknown): VariableCatalogEntry['inferredType'] {
+  if (Array.isArray(value)) return 'array'
+  if (typeof value === 'number') return 'number'
+  if (typeof value === 'string') return 'string'
+  if (typeof value === 'boolean') return 'boolean'
+  if (value && typeof value === 'object') return 'object'
+  return 'unknown'
+}
+
+function resolveAllowedTypes(variable: VariableCatalogEntry): VariableCatalogEntry['inferredType'][] {
+  const normalized = (variable.inferredTypes ?? [])
+    .filter((type): type is VariableCatalogEntry['inferredType'] => typeof type === 'string')
+  if (normalized.length > 0) return Array.from(new Set(normalized))
+  return [variable.inferredType]
+}
+
+function isMixedTypeVariable(variable: VariableCatalogEntry): boolean {
+  const concrete = resolveAllowedTypes(variable).filter(type => type !== 'unknown')
+  return concrete.length > 1
+}
+
 export function PreviewPane(props: PreviewPaneProps): JSX.Element {
   const {
     manifest,
@@ -294,8 +315,15 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
   const renderVariableControl = (variable: VariableCatalogEntry): JSX.Element => {
     const readOnly = !focusedSection || !parsedOverrides.value
     const current = resolveVariableValue(parsedOverrides.value ?? {}, variable)
+    const allowedTypes = resolveAllowedTypes(variable)
+    const mixedType = isMixedTypeVariable(variable)
+    const acceptsUnknown = allowedTypes.includes('unknown')
+    const acceptsType = (inferredType: VariableCatalogEntry['inferredType']): boolean => {
+      if (acceptsUnknown) return true
+      return allowedTypes.includes(inferredType)
+    }
 
-    if (variable.inferredType === 'number') {
+    if (!mixedType && variable.inferredType === 'number') {
       const numeric = typeof current === 'number' ? String(current) : ''
       return (
         <input
@@ -313,7 +341,7 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
       )
     }
 
-    if (variable.inferredType === 'string') {
+    if (!mixedType && variable.inferredType === 'string') {
       const text = typeof current === 'string' ? current : ''
       return (
         <input
@@ -326,7 +354,7 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
       )
     }
 
-    if (variable.inferredType === 'boolean') {
+    if (!mixedType && variable.inferredType === 'boolean') {
       const boolValue = typeof current === 'boolean' ? current : false
       return (
         <label className="preview-boolean-toggle">
@@ -356,11 +384,9 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
 
             try {
               const parsed = JSON.parse(nextRaw)
-              if (variable.inferredType === 'array' && !Array.isArray(parsed)) {
-                throw new Error('Expected an array JSON value.')
-              }
-              if (variable.inferredType === 'object' && (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))) {
-                throw new Error('Expected an object JSON value.')
+              const parsedType = runtimeTypeOfValue(parsed)
+              if (!acceptsType(parsedType)) {
+                throw new Error(`Expected one of: ${allowedTypes.join(', ')}.`)
               }
               handleVariableChange(variable.name, parsed)
               setJsonDraftErrors(state => {
@@ -522,7 +548,9 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
                   <div key={variable.name} className="preview-variable-row">
                     <div className="preview-variable-meta">
                       <strong>{variable.name}</strong>
-                      <span className="preview-type-badge">{variable.inferredType}</span>
+                      {resolveAllowedTypes(variable).map(type => (
+                        <span key={`${variable.name}-${type}`} className="preview-type-badge">{type}</span>
+                      ))}
                       {!parsedOverrides.value || !hasOwnValue(parsedOverrides.value, variable.name)
                         ? <span className="preview-var-origin">default</span>
                         : <span className="preview-var-origin">override</span>}

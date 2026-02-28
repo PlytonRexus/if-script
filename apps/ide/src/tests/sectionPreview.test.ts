@@ -58,11 +58,11 @@ describe('section preview utilities', () => {
 
   it('builds variable template with inferred fallbacks', () => {
     const template = buildVariableOverridesTemplate([
-      { name: 'hp', inferredType: 'number' },
-      { name: 'name', inferredType: 'string' },
-      { name: 'flags', inferredType: 'array' },
-      { name: 'profile', inferredType: 'object' },
-      { name: 'known', inferredType: 'boolean', defaultValue: true }
+      { name: 'hp', inferredType: 'number', inferredTypes: ['number'] },
+      { name: 'name', inferredType: 'string', inferredTypes: ['string'] },
+      { name: 'flags', inferredType: 'array', inferredTypes: ['array'] },
+      { name: 'profile', inferredType: 'object', inferredTypes: ['object'] },
+      { name: 'known', inferredType: 'boolean', inferredTypes: ['boolean'], defaultValue: true }
     ])
     expect(template).toEqual({
       hp: 0,
@@ -75,9 +75,9 @@ describe('section preview utilities', () => {
 
   it('filters visible catalog to section-relevant names + defaults', () => {
     const visible = buildVisibleVariableCatalog([
-      { name: 'hp', inferredType: 'number' },
-      { name: 'name', inferredType: 'string' },
-      { name: 'gold', inferredType: 'number', defaultValue: 5 }
+      { name: 'hp', inferredType: 'number', inferredTypes: ['number'] },
+      { name: 'name', inferredType: 'string', inferredTypes: ['string'] },
+      { name: 'gold', inferredType: 'number', inferredTypes: ['number'], defaultValue: 5 }
     ], ['hp'], false)
 
     expect(visible.map(entry => entry.name)).toEqual(['hp', 'gold'])
@@ -89,8 +89,8 @@ describe('section preview utilities', () => {
     expect(replaced).toEqual({ hp: 10, name: 'Mina', hidden: true })
 
     const reset = applyDefaultsToVariables(replaced, [
-      { name: 'hp', inferredType: 'number' },
-      { name: 'name', inferredType: 'string', defaultValue: 'Default' }
+      { name: 'hp', inferredType: 'number', inferredTypes: ['number'] },
+      { name: 'name', inferredType: 'string', inferredTypes: ['string'], defaultValue: 'Default' }
     ])
     expect(reset).toEqual({ hp: 0, name: 'Default', hidden: true })
 
@@ -100,11 +100,11 @@ describe('section preview utilities', () => {
 
   it('randomizes visible variables while preserving unaffected keys', () => {
     const result = randomizeVariables({ fixed: 'x' }, [
-      { name: 'hp', inferredType: 'number' },
-      { name: 'name', inferredType: 'string' },
-      { name: 'known', inferredType: 'boolean' },
-      { name: 'flags', inferredType: 'array' },
-      { name: 'profile', inferredType: 'object' }
+      { name: 'hp', inferredType: 'number', inferredTypes: ['number'] },
+      { name: 'name', inferredType: 'string', inferredTypes: ['string'] },
+      { name: 'known', inferredType: 'boolean', inferredTypes: ['boolean'] },
+      { name: 'flags', inferredType: 'array', inferredTypes: ['array'] },
+      { name: 'profile', inferredType: 'object', inferredTypes: ['object'] }
     ])
 
     expect(result.fixed).toBe('x')

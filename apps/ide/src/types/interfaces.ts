@@ -80,6 +80,7 @@ export type InferredVariableType = 'number' | 'string' | 'boolean' | 'array' | '
 export interface VariableCatalogEntry {
   name: string
   inferredType: InferredVariableType
+  inferredTypes: InferredVariableType[]
   defaultValue?: unknown
 }
 

@@ -75,9 +75,9 @@ describe('PreviewPane', () => {
   it('shows section-relevant variables by default and can reveal all', () => {
     renderPreviewPane({
       variableCatalog: [
-        { name: 'hp', inferredType: 'number' },
-        { name: 'hidden', inferredType: 'string' },
-        { name: 'globalFlag', inferredType: 'boolean', defaultValue: true }
+        { name: 'hp', inferredType: 'number', inferredTypes: ['number'] },
+        { name: 'hidden', inferredType: 'string', inferredTypes: ['string'] },
+        { name: 'globalFlag', inferredType: 'boolean', inferredTypes: ['boolean'], defaultValue: true }
       ],
       sectionVariableNamesBySerial: { 3: ['hp'] }
     })
@@ -93,7 +93,7 @@ describe('PreviewPane', () => {
   it('repairs invalid JSON from form mode', () => {
     const onChange = vi.fn()
     renderPreviewPane({
-      variableCatalog: [{ name: 'hp', inferredType: 'number' }],
+      variableCatalog: [{ name: 'hp', inferredType: 'number', inferredTypes: ['number'] }],
       sectionVariableNamesBySerial: { 3: ['hp'] },
       variableOverrideText: '{bad}',
       onVariableOverrideTextChange: onChange
@@ -107,9 +107,9 @@ describe('PreviewPane', () => {
     const onChange = vi.fn()
     renderPreviewPane({
       variableCatalog: [
-        { name: 'hp', inferredType: 'number' },
-        { name: 'hidden', inferredType: 'string' },
-        { name: 'globalFlag', inferredType: 'boolean', defaultValue: true }
+        { name: 'hp', inferredType: 'number', inferredTypes: ['number'] },
+        { name: 'hidden', inferredType: 'string', inferredTypes: ['string'] },
+        { name: 'globalFlag', inferredType: 'boolean', inferredTypes: ['boolean'], defaultValue: true }
       ],
       sectionVariableNamesBySerial: { 3: ['hp'] },
       onVariableOverrideTextChange: onChange
@@ -129,5 +129,19 @@ describe('PreviewPane', () => {
     })
     fireEvent.click(screen.getByLabelText('Auto-follow'))
     expect(onToggle).toHaveBeenCalledWith(true)
+  })
+
+  it('renders mixed-type variables as JSON with multiple type badges', () => {
+    renderPreviewPane({
+      variableCatalog: [
+        { name: 'morph', inferredType: 'string', inferredTypes: ['string', 'number'] }
+      ],
+      sectionVariableNamesBySerial: { 3: ['morph'] }
+    })
+
+    expect(screen.getByText('string')).toBeTruthy()
+    expect(screen.getByText('number')).toBeTruthy()
+    expect(screen.queryByRole('spinbutton')).toBeNull()
+    expect(screen.getByDisplayValue('""')).toBeTruthy()
   })
 })
