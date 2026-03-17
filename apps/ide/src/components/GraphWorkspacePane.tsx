@@ -16,6 +16,7 @@ import {
   type Viewport
 } from '@xyflow/react'
 import { EditorPane } from './EditorPane'
+import { GraphSectionWriterPane } from './GraphSectionWriterPane'
 import type {
   AuthorGraphEdge,
   AuthorGraphGroup,
@@ -25,6 +26,8 @@ import type {
   ChoiceIndexEntry,
   GraphLayoutState,
   IdeDiagnostic,
+  SectionContentIndexEntry,
+  SectionWriterInput,
   SectionIndexEntry,
   SectionSettingsIndexEntry,
   WorkspaceFile
@@ -77,6 +80,7 @@ interface GraphWorkspacePaneProps {
   sectionIndex: SectionIndexEntry[]
   sectionSettingsIndex: SectionSettingsIndexEntry[]
   choiceIndex: ChoiceIndexEntry[]
+  sectionContentIndex: SectionContentIndexEntry[]
   layoutState: GraphLayoutState
   onLayoutStateChange: (next: GraphLayoutState) => void
   onCursorChange: (position: { line: number, col: number }) => void
@@ -86,6 +90,7 @@ interface GraphWorkspacePaneProps {
   onDeleteSection: (nodeId: string) => void
   onCreateChoice: (nodeId: string) => void
   onRetargetChoice: (choiceId: string, targetNodeId: string) => void
+  onApplySectionWriterEdits: (sectionSerial: number, input: SectionWriterInput) => string | null
 }
 
 function iconForGroup(group: AuthorGraphGroup): string {
@@ -355,6 +360,14 @@ export function GraphWorkspacePane(props: GraphWorkspacePaneProps): JSX.Element 
     if (!selectedNode?.sectionSerial) return []
     return props.choiceIndex.filter(choice => choice.ownerSectionSerial === selectedNode.sectionSerial)
   }, [props.choiceIndex, selectedNode?.sectionSerial])
+  const selectedSectionSettings = useMemo(() => {
+    if (!selectedNode?.sectionSerial) return null
+    return props.sectionSettingsIndex.find(section => section.sectionSerial === selectedNode.sectionSerial) ?? null
+  }, [props.sectionSettingsIndex, selectedNode?.sectionSerial])
+  const selectedSectionContent = useMemo(() => {
+    if (!selectedNode?.sectionSerial) return null
+    return props.sectionContentIndex.find(section => section.sectionSerial === selectedNode.sectionSerial) ?? null
+  }, [props.sectionContentIndex, selectedNode?.sectionSerial])
   const selectedIncomingCount = useMemo(() => {
     if (!selectedNodeId) return 0
     return props.graph.edges.filter(edge => edge.toNodeId === selectedNodeId).length
@@ -692,7 +705,6 @@ export function GraphWorkspacePane(props: GraphWorkspacePaneProps): JSX.Element 
                   <p>{selectedGroup?.label ?? selectedNode.file.replace('/workspace/', '')}</p>
                 </div>
                 <div className="graph-selection-actions">
-                  <button type="button" className="mini-btn" onClick={() => props.onCreateChoice(selectedNode.id)}>Add choice</button>
                   {selectedNode.kind === 'section' ? (
                     <button type="button" className="mini-btn" onClick={() => props.onDeleteSection(selectedNode.id)}>Delete</button>
                   ) : null}
@@ -737,21 +749,26 @@ export function GraphWorkspacePane(props: GraphWorkspacePaneProps): JSX.Element 
                       dockOpen: !props.layoutState.dockOpen
                     })}
                   >
-                    {props.layoutState.dockOpen ? 'Hide source' : 'Show source'}
+                    {props.layoutState.dockOpen ? 'Hide source' : 'View source'}
                   </button>
                 </div>
-                <section className="graph-choice-list">
-                  <h3>Choices</h3>
-                  {selectedOutgoingChoices.length === 0 ? <p className="empty-message">Create a choice, then drag its handle to another section.</p> : null}
-                  <ul>
-                    {selectedOutgoingChoices.map(choice => (
-                      <li key={choice.id}>
-                        <span>{choice.textPreview || `Choice ${choice.choiceIndex}`}</span>
-                        <small>{choice.targetType}: {String(choice.target ?? '<missing>')}</small>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
+                <GraphSectionWriterPane
+                  section={selectedSectionSettings}
+                  sectionContent={selectedSectionContent}
+                  selectedNode={selectedNode}
+                  selectedGroupLabel={selectedGroup?.label ?? null}
+                  selectedChoices={selectedOutgoingChoices}
+                  unsupportedReason={null}
+                  onDeleteSection={() => props.onDeleteSection(selectedNode.id)}
+                  onOpenSource={() => props.onLayoutStateChange({
+                    ...props.layoutState,
+                    dockOpen: true
+                  })}
+                  onApply={(input) => {
+                    if (!selectedNode.sectionSerial) return
+                    props.onApplySectionWriterEdits(selectedNode.sectionSerial, input)
+                  }}
+                />
               </div>
             </>
           ) : (

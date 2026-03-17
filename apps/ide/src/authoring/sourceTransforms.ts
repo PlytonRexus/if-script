@@ -1,4 +1,17 @@
-import type { ChoiceIndexEntry, SceneIndexEntry, SectionIndexEntry, SectionSettingsIndexEntry, SourceRange, StorySettingsIndexEntry } from '../types/interfaces'
+import type {
+  ChoiceIndexEntry,
+  SceneIndexEntry,
+  SectionContentIndexEntry,
+  SectionIndexEntry,
+  SectionSettingsIndexEntry,
+  SectionWriterInput,
+  SectionWriterPatchResult,
+  SourceRange,
+  StorySettingsIndexEntry,
+  WriterChoiceInput,
+  WriterSectionBlockInput
+} from '../types/interfaces'
+import { expressionPreview } from '../worker/authoringIndex'
 
 interface RewriteEntry {
   keyword: string
@@ -11,6 +24,10 @@ function quoteIfNeeded(value: string | number | null | undefined): string {
   const trimmed = value.trim()
   if (/^-?\d+(\.\d+)?$/.test(trimmed)) return trimmed
   return `"${trimmed.replace(/"/g, '\\"')}"`
+}
+
+function escapeQuoted(value: string): string {
+  return value.replace(/"/g, '\\"')
 }
 
 function splitLines(content: string): string[] {
@@ -150,6 +167,13 @@ function findSectionBlock(lines: string[], section: SectionSettingsIndexEntry): 
   return findSimpleBlock(lines, sectionLine, /^\s*section__\s*$/i, /^\s*__section\s*$/i)
 }
 
+function findSectionBlockByRange(lines: string[], range: SourceRange | null | undefined): { start: number, end: number } | null {
+  if (!range?.startLine || !range?.endLine) return null
+  const start = Math.max(0, range.startLine - 1)
+  const end = Math.min(lines.length - 1, Math.max(start, range.endLine - 1))
+  return { start, end }
+}
+
 function findChoiceBlock(lines: string[], choice: ChoiceIndexEntry): { start: number, end: number } | null {
   if (choice.sourceMode === 'writer') return null
   return findSimpleBlock(lines, choice.line, /^\s*choice__\s*$/i, /^\s*__choice\s*$/i)
@@ -175,6 +199,91 @@ function parseWriterArrowChoiceLine(line: string): { text: string | null, target
     targetType: match[3] ? 'scene' : 'section',
     target
   }
+}
+
+function parseActionsText(text: string): string[] {
+  return text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+}
+
+function renderChoiceText(text: string): string {
+  return quoteIfNeeded(text.trim() || 'Continue')
+}
+
+function renderWriterChoiceLines(choice: WriterChoiceInput, indent: string): string[] {
+  const advanced = Boolean(
+    choice.when.trim() ||
+    choice.disabledText.trim() ||
+    choice.actionsText.trim() ||
+    choice.choiceSfx.trim() ||
+    choice.focusSfx.trim() ||
+    choice.once ||
+    choice.choiceStyle !== 'default'
+  )
+  const target = choice.target.trim()
+  const normalizedTarget = target === '' ? '""' : quoteIfNeeded(target)
+
+  if (!advanced) {
+    const scenePrefix = choice.targetType === 'scene' ? 'scene ' : ''
+    return [`${indent}-> ${renderChoiceText(choice.text)} => ${scenePrefix}${normalizedTarget}`]
+  }
+
+  const lines = [
+    `${indent}choice__`,
+    `${indent}  @targetType ${quoteIfNeeded(choice.targetType)}`,
+    `${indent}  @target ${normalizedTarget}`,
+    `${indent}  ${renderChoiceText(choice.text)}`
+  ]
+  if (choice.when.trim()) lines.splice(2, 0, `${indent}  @when ${choice.when.trim()}`)
+  if (choice.once) lines.splice(2, 0, `${indent}  @once true`)
+  if (choice.disabledText.trim()) lines.splice(2, 0, `${indent}  @disabledText ${quoteIfNeeded(choice.disabledText.trim())}`)
+  parseActionsText(choice.actionsText).forEach(action => {
+    lines.splice(lines.length - 1, 0, `${indent}  @action ${action}`)
+  })
+  if (choice.choiceSfx.trim()) lines.splice(lines.length - 1, 0, `${indent}  @choiceSfx ${quoteIfNeeded(choice.choiceSfx.trim())}`)
+  if (choice.focusSfx.trim()) lines.splice(lines.length - 1, 0, `${indent}  @focusSfx ${quoteIfNeeded(choice.focusSfx.trim())}`)
+  if (choice.choiceStyle !== 'default') lines.splice(lines.length - 1, 0, `${indent}  @choiceStyle ${quoteIfNeeded(choice.choiceStyle)}`)
+  lines.push(`${indent}__choice`)
+  return lines
+}
+
+function renderWriterBlocks(
+  blocks: WriterSectionBlockInput[],
+  choicesById: Map<string, WriterChoiceInput>,
+  indent: string
+): string[] {
+  const lines: string[] = []
+  blocks.forEach(block => {
+    if (block.kind === 'text') {
+      const text = block.text.trim()
+      if (!text) return
+      lines.push(`${indent}${quoteIfNeeded(text)}`)
+      return
+    }
+
+    if (block.kind === 'choice') {
+      const choice = choicesById.get(block.choiceId)
+      if (!choice) return
+      lines.push(...renderWriterChoiceLines(choice, indent))
+      return
+    }
+
+    lines.push(`${indent}if__ (${block.condition.trim() || 'true'}) {`)
+    lines.push(...renderWriterBlocks(block.thenBlocks, choicesById, `${indent}  `))
+    if (block.elseBlocks.length > 0) {
+      lines.push(`${indent}} else__ {`)
+      lines.push(...renderWriterBlocks(block.elseBlocks, choicesById, `${indent}  `))
+    }
+    lines.push(`${indent}}`)
+  })
+  return lines
+}
+
+function updateSectionHeaderLine(line: string, title: string): string {
+  const indent = line.match(/^(\s*)/)?.[1] ?? ''
+  return `${indent}section "${escapeQuoted(title.trim() || 'Untitled Section')}"`
 }
 
 export function applyStoryInspectorPatch(content: string, input: {
@@ -406,6 +515,127 @@ export function applyChoiceInspectorPatch(content: string, choice: ChoiceIndexEn
     content: joinLines(lines),
     syntaxPreview: commonEntries.flatMap(entry => entry.lines).join('\n'),
     unsupportedWriterChoice: false
+  }
+}
+
+export function updateSectionTitle(content: string, range: SourceRange | null | undefined, title: string): string {
+  if (!range?.startLine) return content
+  const lines = splitLines(content)
+  const targetLine = Math.max(0, range.startLine - 1)
+  const current = lines[targetLine]
+  if (!current || !/^\s*section\s+["']/.test(current)) return content
+  lines[targetLine] = updateSectionHeaderLine(current, title)
+  return joinLines(lines)
+}
+
+export function appendTextBlockToSection(content: string, section: SectionIndexEntry | SectionSettingsIndexEntry, text: string): { content: string, line: number } {
+  const lines = splitLines(content)
+  const block = findSectionBlock(lines, {
+    sectionSerial: 'sectionSerial' in section ? section.sectionSerial : section.serial,
+    sectionTitle: 'sectionTitle' in section ? section.sectionTitle : section.title,
+    file: section.file,
+    line: section.line,
+    col: section.col,
+    timerSeconds: null,
+    timerTarget: null,
+    timerOutcome: null,
+    ambience: null,
+    ambienceVolume: 1,
+    ambienceLoop: true,
+    sfx: [],
+    backdrop: null,
+    shot: 'medium',
+    textPacing: 'instant'
+  })
+  if (!block) return { content, line: section.line }
+  const insertAt = Math.max(block.start + 1, block.end)
+  const indent = '  '
+  lines.splice(insertAt, 0, `${indent}${quoteIfNeeded(text.trim())}`)
+  return { content: joinLines(lines), line: insertAt + 1 }
+}
+
+export function appendConditionalBlockToSection(content: string, section: SectionIndexEntry | SectionSettingsIndexEntry, condition = 'true'): { content: string, line: number } {
+  const lines = splitLines(content)
+  const block = findSectionBlock(lines, {
+    sectionSerial: 'sectionSerial' in section ? section.sectionSerial : section.serial,
+    sectionTitle: 'sectionTitle' in section ? section.sectionTitle : section.title,
+    file: section.file,
+    line: section.line,
+    col: section.col,
+    timerSeconds: null,
+    timerTarget: null,
+    timerOutcome: null,
+    ambience: null,
+    ambienceVolume: 1,
+    ambienceLoop: true,
+    sfx: [],
+    backdrop: null,
+    shot: 'medium',
+    textPacing: 'instant'
+  })
+  if (!block) return { content, line: section.line }
+  const insertAt = Math.max(block.start + 1, block.end)
+  lines.splice(insertAt, 0, '  if__ (' + (condition.trim() || 'true') + ') {', '    "New branch."', '  }')
+  return { content: joinLines(lines), line: insertAt + 1 }
+}
+
+export function applySectionWriterPatch(
+  content: string,
+  section: SectionSettingsIndexEntry,
+  sectionContent: SectionContentIndexEntry | null,
+  input: SectionWriterInput
+): SectionWriterPatchResult {
+  if (sectionContent && !sectionContent.supported) {
+    return {
+      content,
+      unsupportedReason: `This section uses unsupported constructs: ${sectionContent.unsupportedNodeKinds.join(', ')}`
+    }
+  }
+
+  const lines = splitLines(content)
+  const block = findSectionBlockByRange(lines, section.sourceRange) ?? findSectionBlock(lines, section)
+  if (!block) {
+    return {
+      content,
+      unsupportedReason: 'Could not locate section source block.'
+    }
+  }
+
+  const startLine = lines[block.start]
+  if (!startLine || !/^\s*section\s+["']/.test(startLine)) {
+    return {
+      content,
+      unsupportedReason: 'Only writer-style sections can be edited in the graph writer.'
+    }
+  }
+
+  const bodyIndent = '  '
+  const choicesById = new Map(input.choices.map(choice => [choice.id, choice]))
+  const bodyLines = renderWriterBlocks(input.blocks, choicesById, bodyIndent)
+  const nextHeader = updateSectionHeaderLine(startLine, input.title)
+  lines.splice(block.start, block.end - block.start + 1, nextHeader, ...bodyLines, 'end')
+
+  const nextContent = joinLines(lines)
+  const patched = applySectionInspectorPatch(nextContent, {
+    ...section,
+    sectionTitle: input.title.trim() || section.sectionTitle
+  }, {
+    timerSeconds: input.settings.timerSeconds.trim() === '' ? null : Number(input.settings.timerSeconds),
+    timerTarget: input.settings.timerTarget.trim() === '' ? null : input.settings.timerTarget.trim(),
+    timerOutcome: input.settings.timerOutcome.trim() === '' ? null : input.settings.timerOutcome.trim(),
+    ambience: input.settings.ambience.trim() === '' ? null : input.settings.ambience.trim(),
+    ambienceVolume: input.settings.ambienceVolume.trim() === '' ? null : Number(input.settings.ambienceVolume),
+    ambienceLoop: input.settings.ambienceLoop,
+    sfx: input.settings.sfxCsv.split(',').map(part => part.trim()).filter(Boolean),
+    backdrop: input.settings.backdrop.trim() === '' ? null : input.settings.backdrop.trim(),
+    shot: input.settings.shot,
+    textPacing: input.settings.textPacing
+  })
+
+  return {
+    content: patched.content,
+    syntaxPreview: patched.syntaxPreview,
+    unsupportedReason: null
   }
 }
 

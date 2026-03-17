@@ -1,6 +1,9 @@
 import type {
   ChoiceIndexEntry,
   SceneIndexEntry,
+  SectionContentBlock,
+  SectionContentConditionalBlock,
+  SectionContentIndexEntry,
   SourceRange,
   SectionSettingsIndexEntry,
   StorySettingsIndexEntry
@@ -73,7 +76,7 @@ function choiceTextPreview(choice: any): string {
   return preview.slice(0, 120)
 }
 
-function expressionPreview(node: any): string {
+export function expressionPreview(node: any): string {
   if (node == null) return ''
   if (typeof node === 'string' || typeof node === 'number' || typeof node === 'boolean') return String(node)
   if (node?._class === 'Token') return String(node.symbol ?? '')
@@ -95,6 +98,91 @@ function expressionPreview(node: any): string {
   if (node?._class === 'ArrayAccess') return `${expressionPreview(node.array)}[${expressionPreview(node.index)}]`
   if (node?._class === 'ArrayLiteral') return `[${Array.isArray(node.elements) ? node.elements.map(expressionPreview).join(', ') : ''}]`
   return ''
+}
+
+function buildNodeSourceRange(node: any, fallbackFile: string, fallbackLine = 1, fallbackCol = 1): SourceRange | null {
+  if (!node || typeof node !== 'object') return null
+  return sourceRange(node, fallbackFile, fallbackLine, fallbackCol)
+}
+
+function blockId(sectionSerial: number, prefix: string, index: number): string {
+  return `section-content:${sectionSerial}:${prefix}:${index}`
+}
+
+function extractSectionContentBlocks(
+  nodes: any[],
+  sectionSerial: number,
+  fallbackFile: string,
+  unsupportedKinds: Set<string>,
+  path = 'root'
+): SectionContentBlock[] {
+  const blocks: SectionContentBlock[] = []
+
+  nodes.forEach((node, index) => {
+    const id = blockId(sectionSerial, `${path}`, index)
+    if (!node || typeof node !== 'object') {
+      if (typeof node === 'string' && node.trim() !== '') {
+        blocks.push({ id, kind: 'text', text: node, sourceRange: null })
+      }
+      return
+    }
+
+    if (node._class === 'Token' && node.type === 'STRING') {
+      blocks.push({
+        id,
+        kind: 'text',
+        text: typeof node.symbol === 'string' ? node.symbol : String(node.symbol ?? ''),
+        sourceRange: buildNodeSourceRange(node, fallbackFile, typeof node.line === 'number' ? node.line : 1, typeof node.col === 'number' ? node.col : 1)
+      })
+      return
+    }
+
+    if (node._class === 'Choice') {
+      const choiceIndex = typeof node.choiceI === 'number' ? node.choiceI : index + 1
+      blocks.push({
+        id,
+        kind: 'choice',
+        choiceId: `choice:${sectionSerial}:${choiceIndex}`,
+        sourceRange: buildNodeSourceRange(node, fallbackFile)
+      })
+      return
+    }
+
+    if (node._class === 'ConditionalBlock') {
+      const conditional: SectionContentConditionalBlock = {
+        id,
+        kind: 'conditional',
+        condition: expressionPreview(node.cond),
+        thenBranch: {
+          blocks: extractSectionContentBlocks(
+            Array.isArray(node.ifBlock) ? node.ifBlock : [],
+            sectionSerial,
+            fallbackFile,
+            unsupportedKinds,
+            `${path}-then-${index}`
+          )
+        },
+        elseBranch: Array.isArray(node.elseBlock)
+          ? {
+              blocks: extractSectionContentBlocks(
+                node.elseBlock,
+                sectionSerial,
+                fallbackFile,
+                unsupportedKinds,
+                `${path}-else-${index}`
+              )
+            }
+          : null,
+        sourceRange: buildNodeSourceRange(node, fallbackFile)
+      }
+      blocks.push(conditional)
+      return
+    }
+
+    unsupportedKinds.add(String(node._class ?? typeof node))
+  })
+
+  return blocks
 }
 
 function extractChoiceInput(input: any): string | null {
@@ -266,4 +354,28 @@ export function buildChoiceIndex(story: any, fallbackFile: string): ChoiceIndexE
     if (a.ownerSectionSerial !== b.ownerSectionSerial) return a.ownerSectionSerial - b.ownerSectionSerial
     return a.choiceIndex - b.choiceIndex
   })
+}
+
+export function buildSectionContentIndex(story: any, fallbackFile: string): SectionContentIndexEntry[] {
+  const sections = Array.isArray(story?.sections) ? story.sections : []
+  return sections.map((section: any) => {
+    const source = section?.source as SourceLike | undefined
+    const range = sourceRange(section, fallbackFile, sourceLine(source, 1), sourceCol(source, 1))
+    const sectionSerial = typeof section?.serial === 'number' ? section.serial : -1
+    const unsupportedKinds = new Set<string>()
+    const blocks = extractSectionContentBlocks(
+      Array.isArray(section?.text) ? section.text : [],
+      sectionSerial,
+      sourceFile(source, fallbackFile),
+      unsupportedKinds
+    )
+    return {
+      sectionSerial,
+      file: sourceFile(source, fallbackFile),
+      sourceRange: range,
+      blocks,
+      supported: unsupportedKinds.size === 0,
+      unsupportedNodeKinds: Array.from(unsupportedKinds).sort()
+    }
+  }).sort((a: SectionContentIndexEntry, b: SectionContentIndexEntry) => a.sectionSerial - b.sectionSerial)
 }

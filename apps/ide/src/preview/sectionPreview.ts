@@ -80,6 +80,16 @@ export function buildVariableOverridesTemplate(variableCatalog: VariableCatalogE
   return out
 }
 
+export function buildPreviewInitialVariables(
+  variableCatalog: VariableCatalogEntry[],
+  overrides: Record<string, unknown>
+): Record<string, unknown> {
+  return {
+    ...buildVariableOverridesTemplate(variableCatalog),
+    ...overrides
+  }
+}
+
 function buildSectionRelevantVariableNames(
   variableCatalog: VariableCatalogEntry[],
   sectionVariableNames: string[]

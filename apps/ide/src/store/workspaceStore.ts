@@ -6,6 +6,7 @@ import type {
   IdeDiagnostic,
   RuntimeEventEntry,
   SceneIndexEntry,
+  SectionContentIndexEntry,
   SectionIndexEntry,
   SectionSettingsIndexEntry,
   StorySettingsIndexEntry,
@@ -79,6 +80,7 @@ interface IdeState {
   storySettingsIndex: StorySettingsIndexEntry | null
   sectionSettingsIndex: SectionSettingsIndexEntry[]
   choiceIndex: ChoiceIndexEntry[]
+  sectionContentIndex: SectionContentIndexEntry[]
   authoringSchema: AuthoringSchema | null
   variableCatalog: VariableCatalogEntry[]
   sectionVariableNamesBySerial: Record<number, string[]>
@@ -107,6 +109,7 @@ interface IdeState {
     storySettingsIndex: StorySettingsIndexEntry | null
     sectionSettingsIndex: SectionSettingsIndexEntry[]
     choiceIndex: ChoiceIndexEntry[]
+    sectionContentIndex: SectionContentIndexEntry[]
     authoringSchema: AuthoringSchema | null
     variableCatalog: VariableCatalogEntry[]
     sectionVariableNamesBySerial: Record<number, string[]>
@@ -142,6 +145,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
   storySettingsIndex: null,
   sectionSettingsIndex: [],
   choiceIndex: [],
+  sectionContentIndex: [],
   authoringSchema: null,
   variableCatalog: [],
   sectionVariableNamesBySerial: {},
@@ -172,6 +176,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
       storySettingsIndex: null,
       sectionSettingsIndex: [],
       choiceIndex: [],
+      sectionContentIndex: [],
       authoringSchema: null,
       variableCatalog: [],
       sectionVariableNamesBySerial: {},
@@ -309,6 +314,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
     storySettingsIndex,
     sectionSettingsIndex,
     choiceIndex,
+    sectionContentIndex,
     authoringSchema,
     variableCatalog,
     sectionVariableNamesBySerial,
@@ -326,6 +332,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
       storySettingsIndex,
       sectionSettingsIndex,
       choiceIndex,
+      sectionContentIndex,
       authoringSchema,
       variableCatalog,
       sectionVariableNamesBySerial,

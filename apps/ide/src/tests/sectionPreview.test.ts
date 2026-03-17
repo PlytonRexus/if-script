@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyDefaultsToVariables,
+  buildPreviewInitialVariables,
   buildSectionPreviewStartOptions,
   buildVariableOverridesTemplate,
   buildVisibleVariableCatalog,
@@ -69,6 +70,27 @@ describe('section preview utilities', () => {
       name: '',
       flags: [],
       profile: {},
+      known: true
+    })
+  })
+
+  it('seeds preview variables with inferred defaults before applying overrides', () => {
+    const seeded = buildPreviewInitialVariables([
+      { name: 'hp', inferredType: 'number', inferredTypes: ['number'] },
+      { name: 'name', inferredType: 'string', inferredTypes: ['string'] },
+      { name: 'flags', inferredType: 'array', inferredTypes: ['array'] },
+      { name: 'profile', inferredType: 'object', inferredTypes: ['object'] },
+      { name: 'known', inferredType: 'boolean', inferredTypes: ['boolean'], defaultValue: true }
+    ], {
+      hp: 9,
+      profile: { rank: 'A' }
+    })
+
+    expect(seeded).toEqual({
+      hp: 9,
+      name: '',
+      flags: [],
+      profile: { rank: 'A' },
       known: true
     })
   })

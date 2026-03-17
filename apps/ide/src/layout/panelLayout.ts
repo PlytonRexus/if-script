@@ -20,16 +20,84 @@ export const DESKTOP_GRID_ROW_HEIGHT = 34
 const DESKTOP_GRID_MAX_ROWS = 120
 export type PanelVisibilityState = Record<PanelId, boolean>
 
-const DEFAULT_LAYOUT: PanelLayoutState = {
-  workspace: { x: 0, y: 0, w: 2, h: 25, minW: 2, minH: 10 },
-  editor: { x: 2, y: 0, w: 5, h: 25, minW: 4, minH: 10 },
-  inspector: { x: 7, y: 0, w: 2, h: 25, minW: 2, minH: 10 },
-  preview: { x: 0, y: 26, w: 12, h: 20, minW: 4, minH: 15 },
-  graph: { x: 9, y: 5, w: 3, h: 12, minW: 2, minH: 5 },
-  diagnostics: { x: 9, y: 15, w: 3, h: 4, minW: 2, minH: 3 },
-  runtime: { x: 9, y: 19, w: 3, h: 6, minW: 2, minH: 3 },
-  timings: { x: 9, y: 23, w: 3, h: 3, minW: 2, minH: 3 }
+// const DEFAULT_LAYOUT: PanelLayoutState = {
+//   workspace: { x: 0, y: 0, w: 2, h: 25, minW: 2, minH: 8 },
+//   editor: { x: 2, y: 0, w: 5, h: 25, minW: 4, minH: 8 },
+//   inspector: { x: 7, y: 0, w: 2, h: 25, minW: 2, minH: 8 },
+//   preview: { x: 0, y: 26, w: 12, h: 20, minW: 4, minH: 10 },
+//   graph: { x: 9, y: 5, w: 3, h: 12, minW: 2, minH: 5 },
+//   diagnostics: { x: 9, y: 15, w: 3, h: 4, minW: 2, minH: 3 },
+//   runtime: { x: 9, y: 19, w: 3, h: 6, minW: 2, minH: 3 },
+//   timings: { x: 9, y: 23, w: 3, h: 3, minW: 2, minH: 3 }
+// }
+
+const DEFAULT_LAYOUT: PanelLayoutState =  {
+    "workspace": {
+        "x": 0,
+        "y": 0,
+        "w": 2,
+        "h": 25,
+        "minW": 2,
+        "minH": 10
+    },
+    "editor": {
+        "x": 2,
+        "y": 0,
+        "w": 5,
+        "h": 25,
+        "minW": 4,
+        "minH": 10
+    },
+    "inspector": {
+        "x": 7,
+        "y": 0,
+        "w": 2,
+        "h": 25,
+        "minW": 2,
+        "minH": 10
+    },
+    "preview": {
+        "x": 0,
+        "y": 26,
+        "w": 12,
+        "h": 20,
+        "minW": 4,
+        "minH": 15
+    },
+    "graph": {
+        "x": 9,
+        "y": 5,
+        "w": 3,
+        "h": 12,
+        "minW": 2,
+        "minH": 5
+    },
+    "diagnostics": {
+        "x": 9,
+        "y": 15,
+        "w": 3,
+        "h": 4,
+        "minW": 2,
+        "minH": 3
+    },
+    "runtime": {
+        "x": 9,
+        "y": 19,
+        "w": 3,
+        "h": 6,
+        "minW": 2,
+        "minH": 3
+    },
+    "timings": {
+        "x": 9,
+        "y": 23,
+        "w": 3,
+        "h": 3,
+        "minW": 2,
+        "minH": 3
+    }
 }
+
 const DEFAULT_VISIBILITY: PanelVisibilityState = {
   workspace: true,
   editor: true,
@@ -37,8 +105,8 @@ const DEFAULT_VISIBILITY: PanelVisibilityState = {
   preview: true,
   graph: true,
   diagnostics: true,
-  runtime: true,
-  timings: true
+  runtime: false,
+  timings: false
 }
 
 type PartialLayoutState = Partial<Record<PanelId, Partial<PanelLayoutItem>>>
@@ -74,9 +142,9 @@ export function getDefaultDesktopLayout(): PanelLayoutState {
 
 export function getGraphModeDesktopLayout(): PanelLayoutState {
   const out = getDefaultDesktopLayout()
-  out.workspace = { x: 0, y: 0, w: 2, h: 28, minW: 2, minH: 10 }
-  out.editor = { x: 2, y: 0, w: 7, h: 28, minW: 4, minH: 12 }
-  out.preview = { x: 9, y: 0, w: 3, h: 28, minW: 3, minH: 12 }
+  out.workspace = { x: 0, y: 0, w: 2, h: 28, minW: 2, minH: 8 }
+  out.editor = { x: 2, y: 0, w: 10, h: 28, minW: 4, minH: 8 }
+  out.preview = { x: 0, y: 28, w: 12, h: 18, minW: 4, minH: 8 }
   return out
 }
 

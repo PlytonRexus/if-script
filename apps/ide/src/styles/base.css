@@ -903,6 +903,109 @@ button {
   min-height: 260px;
 }
 
+.graph-writer-pane {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.graph-writer-header {
+  border-bottom: none;
+  padding: 0;
+}
+
+.graph-writer-title {
+  min-width: 0;
+}
+
+.graph-writer-title input,
+.writer-block input,
+.writer-block select,
+.writer-settings-grid input,
+.writer-settings-grid select,
+.writer-conditional input,
+.writer-branch select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-panel);
+  color: var(--text-main);
+  padding: 0.5rem 0.65rem;
+}
+
+.writer-block textarea,
+.writer-settings-grid textarea,
+.writer-conditional textarea,
+.writer-branch textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-panel);
+  color: var(--text-main);
+  padding: 0.65rem;
+  resize: vertical;
+}
+
+.graph-writer-title input {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.graph-writer-content {
+  padding: 0;
+}
+
+.graph-writer-warning,
+.writer-section,
+.writer-block,
+.writer-branch {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-panel);
+  padding: 0.7rem;
+}
+
+.graph-writer-warning {
+  background: color-mix(in srgb, var(--warn) 10%, var(--bg-panel) 90%);
+}
+
+.writer-section,
+.writer-conditional,
+.writer-choice-card,
+.writer-settings-grid {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.writer-section-header,
+.writer-block-toolbar,
+.writer-branch-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.writer-section h3,
+.writer-branch strong {
+  margin: 0;
+}
+
+.writer-choice-card,
+.writer-settings-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.writer-choice-card label,
+.writer-settings-grid label,
+.writer-block label,
+.writer-conditional label,
+.writer-branch label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+}
+
 .react-flow__controls {
   box-shadow: none;
   border: 1px solid var(--border);
@@ -951,6 +1054,7 @@ button {
   align-items: center;
   gap: 0.35rem;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .author-graph-group-icon {
@@ -990,7 +1094,13 @@ button {
   display: block;
   font-size: 0.95rem;
   line-height: 1.25;
-  max-width: 150px;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .author-graph-badges {
@@ -1016,13 +1126,37 @@ button {
   gap: 0.28rem;
   margin-top: 0.55rem;
   padding-right: 1rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .author-graph-choice-chip {
   position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
   font-size: 0.72rem;
   color: var(--text-muted);
   padding-right: 0.8rem;
+  overflow: hidden;
+}
+
+.author-graph-choice-chip span {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+
+.author-graph-group-title strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .author-graph-choice-empty {

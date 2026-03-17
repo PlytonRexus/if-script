@@ -10,7 +10,8 @@ import { PlaytestInspectorPanel } from '../components/PlaytestInspectorPanel'
 import { PreviewPane } from '../components/PreviewPane'
 import { Sidebar } from '../components/Sidebar'
 import { TopBar } from '../components/TopBar'
-import { appendChoiceToSection, appendSectionScaffold, applyChoiceInspectorPatch, deleteSectionBySourceRange } from '../authoring/sourceTransforms'
+import { appendChoiceToSection, appendSectionScaffold, applyChoiceInspectorPatch, applySectionWriterPatch, deleteSectionBySourceRange } from '../authoring/sourceTransforms'
+import { DEFAULT_GRAPH_LAYOUT, normalizeGraphLayout } from '../layout/graphLayout'
 import { DESKTOP_GRID_COLUMNS, DESKTOP_GRID_ROW_HEIGHT, GRAPH_MODE_PANEL_IDS, PANEL_IDS, PANEL_LAYOUT_VERSION, deserializeLayout, fromGridLayout, getDefaultDesktopLayout, getDefaultPanelVisibility, getGraphModeDesktopLayout, isDesktopViewport, normalizePanelVisibility, serializeLayout, toGridLayout, type PanelVisibilityState } from '../layout/panelLayout'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { idbGet, idbSet } from '../lib/indexedDb'
@@ -31,6 +32,7 @@ import type {
   ParseWorkerRequest,
   ParseWorkerResponse,
   RuntimeEventEntry,
+  SectionWriterInput,
   VariablePreset,
   WorkspaceBundle,
   WorkspaceFile,
@@ -65,29 +67,6 @@ const PANEL_TOGGLE_SHORT_LABELS: Record<PanelId, string> = {
 }
 const AUTHOR_MODE_V1_ENABLED = true
 type AuthorMode = 'graph' | 'source'
-
-const DEFAULT_GRAPH_LAYOUT: GraphLayoutState = {
-  pinnedNodes: {},
-  collapsedGroupIds: [],
-  groupsVisible: false,
-  zoom: 1,
-  viewport: { x: 0, y: 0, zoom: 1 },
-  dockOpen: true,
-  visibleNodeCap: 60,
-  legendCollapsed: false
-}
-
-function normalizeGraphLayout(next?: GraphLayoutState | null): GraphLayoutState {
-  if (!next) return { ...DEFAULT_GRAPH_LAYOUT }
-  return {
-    ...DEFAULT_GRAPH_LAYOUT,
-    ...next,
-    pinnedNodes: next.pinnedNodes ?? {},
-    collapsedGroupIds: Array.isArray(next.collapsedGroupIds) ? next.collapsedGroupIds : [],
-    groupsVisible: next.groupsVisible === true,
-    viewport: next.viewport ?? DEFAULT_GRAPH_LAYOUT.viewport
-  }
-}
 
 function toGraphLayout(
   legacy?: {
@@ -181,6 +160,7 @@ export function IdePage(): JSX.Element {
   const storySettingsIndex = useIdeStore(state => state.storySettingsIndex)
   const sectionSettingsIndex = useIdeStore(state => state.sectionSettingsIndex)
   const choiceIndex = useIdeStore(state => state.choiceIndex)
+  const sectionContentIndex = useIdeStore(state => state.sectionContentIndex)
   const authoringSchema = useIdeStore(state => state.authoringSchema)
   const variableCatalog = useIdeStore(state => state.variableCatalog)
   const sectionVariableNamesBySerial = useIdeStore(state => state.sectionVariableNamesBySerial)
@@ -360,6 +340,7 @@ export function IdePage(): JSX.Element {
         storySettingsIndex: payload.storySettingsIndex,
         sectionSettingsIndex: payload.sectionSettingsIndex,
         choiceIndex: payload.choiceIndex,
+        sectionContentIndex: payload.sectionContentIndex,
         authoringSchema: payload.authoringSchema,
         variableCatalog: payload.variableCatalog,
         sectionVariableNamesBySerial: payload.sectionVariableNamesBySerial,
@@ -850,6 +831,22 @@ export function IdePage(): JSX.Element {
     setActiveFile(choice.file)
   }, [authorGraph.nodes, choiceIndex, filesMap, setActiveFile, setFileContent])
 
+  const handleApplySectionWriterEdits = useCallback((sectionSerial: number, input: SectionWriterInput): string | null => {
+    const section = sectionSettingsIndex.find(entry => entry.sectionSerial === sectionSerial)
+    if (!section) return 'Section metadata not found.'
+    const sectionContent = sectionContentIndex.find(entry => entry.sectionSerial === sectionSerial) ?? null
+    const file = filesMap[section.file]
+    if (!file) return `Section file not found: ${section.file}`
+
+    const result = applySectionWriterPatch(file.content, section, sectionContent, input)
+    if (result.unsupportedReason) return result.unsupportedReason
+
+    setFileContent(section.file, result.content)
+    setActiveFile(section.file)
+    setCursorTarget({ line: section.line, col: section.col, nonce: Date.now() })
+    return null
+  }, [filesMap, sectionContentIndex, sectionSettingsIndex, setActiveFile, setFileContent])
+
   const openDirectory = useCallback(async () => {
     try {
       const opened = await openWorkspaceFromDirectory()
@@ -1027,6 +1024,7 @@ export function IdePage(): JSX.Element {
             sectionIndex={sectionIndex}
             sectionSettingsIndex={sectionSettingsIndex}
             choiceIndex={choiceIndex}
+            sectionContentIndex={sectionContentIndex}
             layoutState={graphLayout}
             onLayoutStateChange={setGraphLayout}
             onCursorChange={setCursorPosition}
@@ -1039,6 +1037,7 @@ export function IdePage(): JSX.Element {
             onDeleteSection={handleDeleteGraphSection}
             onCreateChoice={handleCreateGraphChoice}
             onRetargetChoice={handleRetargetGraphChoice}
+            onApplySectionWriterEdits={handleApplySectionWriterEdits}
           />
         )
       }
@@ -1160,6 +1159,7 @@ export function IdePage(): JSX.Element {
     inspectorSelection,
     diagnostics,
     sectionIndex,
+    sectionContentIndex,
     sectionSettingsIndex,
     sceneIndex,
     files,
@@ -1169,6 +1169,7 @@ export function IdePage(): JSX.Element {
     focusedSectionNodeId,
     graph,
     graphLayout,
+    handleApplySectionWriterEdits,
     handleCreateGraphChoice,
     handleCreateGraphSection,
     handleDeleteGraphSection,

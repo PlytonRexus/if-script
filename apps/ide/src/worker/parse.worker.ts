@@ -4,7 +4,7 @@ import { analyzeStory } from '../analyzer/check'
 import { buildAuthorGraph } from '../graph/buildAuthorGraph'
 import { buildStoryGraph } from '../graph/buildStoryGraph'
 import { FALLBACK_AUTHORING_SCHEMA } from '../authoring/schema'
-import { buildChoiceIndex, buildSceneIndex, buildSectionSettingsIndex, buildStorySettingsIndex } from './authoringIndex'
+import { buildChoiceIndex, buildSceneIndex, buildSectionContentIndex, buildSectionSettingsIndex, buildStorySettingsIndex } from './authoringIndex'
 import { buildSectionVariableNamesBySerial } from './variableUsage'
 import { buildVariableCatalogAndWarnings } from './variableInference'
 import type {
@@ -139,6 +139,7 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
     const storySettingsIndex = buildStorySettingsIndex(story, request.entryFile)
     const sectionSettingsIndex = buildSectionSettingsIndex(story, request.entryFile)
     const choiceIndex = buildChoiceIndex(story, request.entryFile)
+    const sectionContentIndex = buildSectionContentIndex(story, request.entryFile)
     const authorGraph = buildAuthorGraph({
       graph,
       sectionIndex,
@@ -164,6 +165,7 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
       storySettingsIndex,
       sectionSettingsIndex,
       choiceIndex,
+      sectionContentIndex,
       authoringSchema,
       variableCatalog,
       sectionVariableNamesBySerial,
@@ -197,6 +199,7 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
       storySettingsIndex: null,
       sectionSettingsIndex: [],
       choiceIndex: [],
+      sectionContentIndex: [],
       authoringSchema: FALLBACK_AUTHORING_SCHEMA,
       variableCatalog: [],
       sectionVariableNamesBySerial: {},

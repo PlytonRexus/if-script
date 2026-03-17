@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import IFScript from 'if-script-core'
 import {
   applyDefaultsToVariables,
+  buildPreviewInitialVariables,
   buildSectionPreviewStartOptions,
   buildVariableOverridesTemplate,
   buildVisibleVariableCatalog,
@@ -173,8 +174,11 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
   const hiddenVariableCount = Math.max(variableCatalog.length - visibleVariableCatalog.length, 0)
 
   const startOptions = useMemo(() => {
-    return buildSectionPreviewStartOptions(focusedSection, parsedOverrides.value ?? {})
-  }, [focusedSection, parsedOverrides.value])
+    return buildSectionPreviewStartOptions(
+      focusedSection,
+      buildPreviewInitialVariables(variableCatalog, parsedOverrides.value ?? {})
+    )
+  }, [focusedSection, parsedOverrides.value, variableCatalog])
 
   useEffect(() => {
     latestRef.current = {

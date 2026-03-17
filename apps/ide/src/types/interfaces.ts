@@ -227,6 +227,112 @@ export interface ChoiceIndexEntry {
   textPreview: string
 }
 
+export interface SectionContentTextBlock {
+  id: string
+  kind: 'text'
+  text: string
+  sourceRange?: SourceRange | null
+}
+
+export interface SectionContentChoiceBlock {
+  id: string
+  kind: 'choice'
+  choiceId: string
+  sourceRange?: SourceRange | null
+}
+
+export interface SectionContentBranch {
+  blocks: SectionContentBlock[]
+}
+
+export interface SectionContentConditionalBlock {
+  id: string
+  kind: 'conditional'
+  condition: string
+  thenBranch: SectionContentBranch
+  elseBranch: SectionContentBranch | null
+  sourceRange?: SourceRange | null
+}
+
+export type SectionContentBlock =
+  | SectionContentTextBlock
+  | SectionContentChoiceBlock
+  | SectionContentConditionalBlock
+
+export interface SectionContentIndexEntry {
+  sectionSerial: number
+  file: string
+  sourceRange?: SourceRange | null
+  blocks: SectionContentBlock[]
+  supported: boolean
+  unsupportedNodeKinds: string[]
+}
+
+export interface WriterChoiceInput {
+  id: string
+  text: string
+  targetType: 'section' | 'scene'
+  target: string
+  when: string
+  once: boolean
+  disabledText: string
+  actionsText: string
+  choiceSfx: string
+  focusSfx: string
+  choiceStyle: 'default' | 'primary' | 'subtle' | 'danger'
+}
+
+export interface WriterTextBlockInput {
+  id: string
+  kind: 'text'
+  text: string
+}
+
+export interface WriterChoiceBlockInput {
+  id: string
+  kind: 'choice'
+  choiceId: string
+}
+
+export interface WriterConditionalBlockInput {
+  id: string
+  kind: 'conditional'
+  condition: string
+  thenBlocks: WriterSectionBlockInput[]
+  elseBlocks: WriterSectionBlockInput[]
+}
+
+export type WriterSectionBlockInput =
+  | WriterTextBlockInput
+  | WriterChoiceBlockInput
+  | WriterConditionalBlockInput
+
+export interface SectionWriterSettingsInput {
+  timerSeconds: string
+  timerTarget: string
+  timerOutcome: string
+  ambience: string
+  ambienceVolume: string
+  ambienceLoop: boolean
+  sfxCsv: string
+  backdrop: string
+  shot: 'wide' | 'medium' | 'close' | 'extreme_close'
+  textPacing: 'instant' | 'typed' | 'cinematic'
+}
+
+export interface SectionWriterInput {
+  title: string
+  blocks: WriterSectionBlockInput[]
+  choices: WriterChoiceInput[]
+  settings: SectionWriterSettingsInput
+}
+
+export interface SectionWriterPatchResult {
+  content: string
+  syntaxPreview?: string
+  unsupportedReason?: string | null
+}
+
 export interface AuthoringSchemaProperty {
   keyword: string
   field: string
@@ -291,6 +397,7 @@ export interface ParseWorkerResponse {
   storySettingsIndex: StorySettingsIndexEntry | null
   sectionSettingsIndex: SectionSettingsIndexEntry[]
   choiceIndex: ChoiceIndexEntry[]
+  sectionContentIndex: SectionContentIndexEntry[]
   authoringSchema: AuthoringSchema | null
   variableCatalog: VariableCatalogEntry[]
   sectionVariableNamesBySerial: Record<number, string[]>

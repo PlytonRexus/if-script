@@ -5,10 +5,11 @@ import {
   applyChoiceInspectorPatch,
   applySceneInspectorPatch,
   applySectionInspectorPatch,
+  applySectionWriterPatch,
   applyStoryInspectorPatch,
   deleteSectionBySourceRange
 } from '../authoring/sourceTransforms'
-import type { ChoiceIndexEntry, SceneIndexEntry, SectionIndexEntry, SectionSettingsIndexEntry, StorySettingsIndexEntry } from '../types/interfaces'
+import type { ChoiceIndexEntry, SceneIndexEntry, SectionContentIndexEntry, SectionIndexEntry, SectionSettingsIndexEntry, StorySettingsIndexEntry } from '../types/interfaces'
 
 describe('sourceTransforms', () => {
   it('patches story settings block with advanced properties', () => {
@@ -277,5 +278,141 @@ describe('sourceTransforms', () => {
 
     expect(next.content).toContain('-> "Continue" => "Hallway"')
     expect(next.line).toBe(3)
+  })
+
+  it('rewrites writer sections through the graph writer patch', () => {
+    const content = [
+      'section "Start"',
+      '  "Hello"',
+      '  -> "Continue" => "Hallway"',
+      'end',
+      ''
+    ].join('\n')
+    const section: SectionSettingsIndexEntry = {
+      sectionSerial: 1,
+      sectionTitle: 'Start',
+      file: '/workspace/main.if',
+      line: 1,
+      col: 1,
+      sourceRange: { file: '/workspace/main.if', startLine: 1, startCol: 1, endLine: 4, endCol: 1 },
+      timerSeconds: null,
+      timerTarget: null,
+      timerOutcome: null,
+      ambience: null,
+      ambienceVolume: 1,
+      ambienceLoop: true,
+      sfx: [],
+      backdrop: null,
+      shot: 'medium',
+      textPacing: 'instant'
+    }
+    const sectionContent: SectionContentIndexEntry = {
+      sectionSerial: 1,
+      file: '/workspace/main.if',
+      sourceRange: section.sourceRange,
+      supported: true,
+      unsupportedNodeKinds: [],
+      blocks: [
+        { id: 'text-1', kind: 'text', text: 'Hello' },
+        { id: 'choice-1', kind: 'choice', choiceId: 'choice:1:1' }
+      ]
+    }
+
+    const patched = applySectionWriterPatch(content, section, sectionContent, {
+      title: 'Arrival',
+      blocks: [
+        { id: 'text-1', kind: 'text', text: 'New intro.' },
+        {
+          id: 'cond-1',
+          kind: 'conditional',
+          condition: 'hasKey == true',
+          thenBlocks: [{ id: 'text-then', kind: 'text', text: 'The gate opens.' }],
+          elseBlocks: [{ id: 'text-else', kind: 'text', text: 'The gate stays shut.' }]
+        },
+        { id: 'choice-block-1', kind: 'choice', choiceId: 'choice:1:1' }
+      ],
+      choices: [{
+        id: 'choice:1:1',
+        text: 'Continue',
+        targetType: 'section',
+        target: 'Hallway',
+        when: '',
+        once: false,
+        disabledText: '',
+        actionsText: '',
+        choiceSfx: '',
+        focusSfx: '',
+        choiceStyle: 'default'
+      }],
+      settings: {
+        timerSeconds: '',
+        timerTarget: '',
+        timerOutcome: '',
+        ambience: '',
+        ambienceVolume: '1',
+        ambienceLoop: true,
+        sfxCsv: '',
+        backdrop: '',
+        shot: 'medium',
+        textPacing: 'instant'
+      }
+    })
+
+    expect(patched.unsupportedReason).toBeNull()
+    expect(patched.content).toContain('section "Arrival"')
+    expect(patched.content).toContain('"New intro."')
+    expect(patched.content).toContain('if__ (hasKey == true) {')
+    expect(patched.content).toContain('} else__ {')
+    expect(patched.content).toContain('-> "Continue" => "Hallway"')
+  })
+
+  it('refuses writer patching when unsupported constructs are present', () => {
+    const content = 'section "Start"\n  "Hello"\nend\n'
+    const section: SectionSettingsIndexEntry = {
+      sectionSerial: 1,
+      sectionTitle: 'Start',
+      file: '/workspace/main.if',
+      line: 1,
+      col: 1,
+      sourceRange: { file: '/workspace/main.if', startLine: 1, startCol: 1, endLine: 3, endCol: 1 },
+      timerSeconds: null,
+      timerTarget: null,
+      timerOutcome: null,
+      ambience: null,
+      ambienceVolume: 1,
+      ambienceLoop: true,
+      sfx: [],
+      backdrop: null,
+      shot: 'medium',
+      textPacing: 'instant'
+    }
+
+    const patched = applySectionWriterPatch(content, section, {
+      sectionSerial: 1,
+      file: '/workspace/main.if',
+      sourceRange: section.sourceRange,
+      blocks: [],
+      supported: false,
+      unsupportedNodeKinds: ['Loop']
+    }, {
+      title: 'Start',
+      blocks: [],
+      choices: [],
+      settings: {
+        timerSeconds: '',
+        timerTarget: '',
+        timerOutcome: '',
+        ambience: '',
+        ambienceVolume: '1',
+        ambienceLoop: true,
+        sfxCsv: '',
+        backdrop: '',
+        shot: 'medium',
+        textPacing: 'instant'
+      }
+    })
+
+    expect(patched.unsupportedReason).toContain('Loop')
+    expect(patched.content).toBe(content)
   })
 })

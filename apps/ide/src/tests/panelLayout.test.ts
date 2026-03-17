@@ -61,17 +61,19 @@ describe('panelLayout', () => {
     expect(deserializeLayout('bad-payload')).toBeNull()
   })
 
-  it('provides a focused graph mode layout for workspace, editor, and preview', () => {
+  it('provides a graph mode layout with playtest below the workspace and graph panels', () => {
     const layout = getGraphModeDesktopLayout()
 
     expect(GRAPH_MODE_PANEL_IDS).toEqual(['workspace', 'editor', 'preview'])
     expect(layout.workspace.x).toBe(0)
     expect(layout.editor.x).toBe(layout.workspace.x + layout.workspace.w)
-    expect(layout.preview.x).toBe(layout.editor.x + layout.editor.w)
+    expect(layout.editor.w).toBe(10)
+    expect(layout.preview.x).toBe(0)
+    expect(layout.preview.w).toBe(12)
     expect(layout.workspace.y).toBe(0)
     expect(layout.editor.y).toBe(0)
-    expect(layout.preview.y).toBe(0)
-    expect(layout.editor.h).toBe(layout.preview.h)
+    expect(layout.preview.y).toBeGreaterThanOrEqual(layout.workspace.y + layout.workspace.h)
+    expect(layout.workspace.w + layout.editor.w).toBe(12)
   })
 
   it('normalizes panel visibility with safe defaults', () => {
