@@ -69,6 +69,54 @@ export interface StoryGraph {
   deadEnds: string[]
 }
 
+export interface AuthorGraphNodeAffordances {
+  hasTimer: boolean
+  hasAmbience: boolean
+  hasBackdrop: boolean
+  hasSfx: boolean
+  hasConditionalChoices: boolean
+}
+
+export interface AuthorGraphNode {
+  id: string
+  kind: 'section' | 'unresolved'
+  label: string
+  file: string
+  sectionSerial: number | null
+  sceneSerial: number | null
+  sourceRange: SourceRange | null
+  unreachable: boolean
+  hasError: boolean
+  affordances: AuthorGraphNodeAffordances
+}
+
+export interface AuthorGraphEdge {
+  id: string
+  choiceId: string | null
+  fromNodeId: string
+  toNodeId: string
+  conditional: boolean
+  unresolved: boolean
+  targetType: 'section' | 'scene'
+}
+
+export interface AuthorGraphGroup {
+  id: string
+  kind: 'scene' | 'file'
+  label: string
+  file: string
+  sceneSerial: number | null
+  nodeIds: string[]
+  colorToken: string
+  iconKey: string | null
+}
+
+export interface AuthorGraphModel {
+  nodes: AuthorGraphNode[]
+  edges: AuthorGraphEdge[]
+  groups: AuthorGraphGroup[]
+}
+
 export interface SourceRange {
   file: string
   startLine: number | null
@@ -237,6 +285,7 @@ export interface ParseWorkerResponse {
   story: unknown | null
   diagnostics: IdeDiagnostic[]
   graph: StoryGraph
+  authorGraph: AuthorGraphModel
   sectionIndex: SectionIndexEntry[]
   sceneIndex: SceneIndexEntry[]
   storySettingsIndex: StorySettingsIndexEntry | null
@@ -270,6 +319,7 @@ export interface WorkspaceBundle {
   files: Record<string, string>
   metadata?: {
     storyboardLayout?: StoryboardLayoutState
+    graphLayout?: GraphLayoutState
   }
 }
 
@@ -283,6 +333,17 @@ export interface StoryboardLayoutState {
   nodes: Record<string, { x: number, y: number, collapsed?: boolean }>
   lanes: Record<string, { order: number }>
   zoom: number
+}
+
+export interface GraphLayoutState {
+  pinnedNodes: Record<string, { x: number, y: number }>
+  collapsedGroupIds: string[]
+  groupsVisible: boolean
+  zoom: number
+  viewport: { x: number, y: number, zoom: number }
+  dockOpen: boolean
+  visibleNodeCap: 25 | 60 | 100 | 150
+  legendCollapsed: boolean
 }
 
 export type RuntimeDebugCategory =

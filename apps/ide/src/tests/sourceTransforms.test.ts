@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  appendChoiceToSection,
+  appendSectionScaffold,
   applyChoiceInspectorPatch,
   applySceneInspectorPatch,
   applySectionInspectorPatch,
-  applyStoryInspectorPatch
+  applyStoryInspectorPatch,
+  deleteSectionBySourceRange
 } from '../authoring/sourceTransforms'
-import type { ChoiceIndexEntry, SceneIndexEntry, SectionSettingsIndexEntry, StorySettingsIndexEntry } from '../types/interfaces'
+import type { ChoiceIndexEntry, SceneIndexEntry, SectionIndexEntry, SectionSettingsIndexEntry, StorySettingsIndexEntry } from '../types/interfaces'
 
 describe('sourceTransforms', () => {
   it('patches story settings block with advanced properties', () => {
@@ -211,5 +214,68 @@ describe('sourceTransforms', () => {
     expect(patched.content).toContain('@when gold >= 5')
     expect(patched.content).toContain('@action gold = gold - 5')
     expect(patched.content).toContain('__choice')
+  })
+
+  it('appends a new section scaffold and returns insertion line', () => {
+    const content = 'section "Start"\n  "Hello"\nend\n'
+    const result = appendSectionScaffold(content, { title: 'Hallway' })
+
+    expect(result.content).toContain('section "Hallway"')
+    expect(result.line).toBeGreaterThan(3)
+  })
+
+  it('deletes a section by source range', () => {
+    const content = [
+      'section "Start"',
+      '  "Hello"',
+      'end',
+      '',
+      'section "Hallway"',
+      '  "Dark."',
+      'end',
+      ''
+    ].join('\n')
+    const next = deleteSectionBySourceRange(content, {
+      file: '/workspace/main.if',
+      startLine: 5,
+      startCol: 1,
+      endLine: 7,
+      endCol: 1
+    })
+
+    expect(next).not.toContain('section "Hallway"')
+    expect(next).toContain('section "Start"')
+  })
+
+  it('appends a writer-style choice to a section', () => {
+    const content = [
+      'section "Start"',
+      '  "Hello"',
+      'end',
+      ''
+    ].join('\n')
+    const section: SectionIndexEntry = {
+      serial: 1,
+      title: 'Start',
+      file: '/workspace/main.if',
+      line: 1,
+      col: 1,
+      sourceRange: {
+        file: '/workspace/main.if',
+        startLine: 1,
+        startCol: 1,
+        endLine: 3,
+        endCol: 1
+      }
+    }
+
+    const next = appendChoiceToSection(content, section, {
+      text: 'Continue',
+      target: 'Hallway',
+      targetType: 'section'
+    })
+
+    expect(next.content).toContain('-> "Continue" => "Hallway"')
+    expect(next.line).toBe(3)
   })
 })

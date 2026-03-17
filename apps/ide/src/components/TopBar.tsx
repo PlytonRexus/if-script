@@ -15,7 +15,7 @@ interface TopBarProps {
   onImportBundle: () => void
   onExportBundle: () => void
   onToggleTheme: () => void
-  authorMode: 'storyboard' | 'source'
+  authorMode: 'graph' | 'source'
   onToggleAuthorMode: () => void
   onCommandPalette: () => void
   onResetLayout: () => void
@@ -25,6 +25,8 @@ interface TopBarProps {
 }
 
 export function TopBar(props: TopBarProps): JSX.Element {
+  const showPanelToggles = props.panelToggleItems.length > 0
+
   return (
     <header className="top-bar">
       <div className="title-wrap">
@@ -50,21 +52,23 @@ export function TopBar(props: TopBarProps): JSX.Element {
         <button onClick={props.onExportBundle}>Export</button>
         <button onClick={props.onResetLayout}>Reset Layout</button>
         <button onClick={props.onToggleTheme}>Theme</button>
-        <button onClick={props.onToggleAuthorMode}>{props.authorMode === 'storyboard' ? 'Source Mode' : 'Storyboard Mode'}</button>
+        <button onClick={props.onToggleAuthorMode}>{props.authorMode === 'graph' ? 'Source Mode' : 'Graph Mode'}</button>
         <button onClick={props.onCommandPalette}>Palette</button>
-        <div className="panel-toggle-group" aria-label="Panel visibility controls">
-          <span>Panels</span>
-          {props.panelToggleItems.map((item) => (
-            <button
-              key={item.id}
-              className={`mini-btn${item.visible ? ' active' : ''}`}
-              onClick={() => props.onTogglePanel(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-          <button className="mini-btn" onClick={props.onShowAllPanels}>Show all</button>
-        </div>
+        {showPanelToggles ? (
+          <div className="panel-toggle-group" aria-label="Panel visibility controls">
+            <span>Panels</span>
+            {props.panelToggleItems.map((item) => (
+              <button
+                key={item.id}
+                className={`mini-btn${item.visible ? ' active' : ''}`}
+                onClick={() => props.onTogglePanel(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+            <button className="mini-btn" onClick={props.onShowAllPanels}>Show all</button>
+          </div>
+        ) : null}
       </div>
     </header>
   )

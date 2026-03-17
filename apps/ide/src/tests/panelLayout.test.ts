@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deserializeLayout, getDefaultDesktopLayout, getDefaultPanelVisibility, normalizeLayout, normalizePanelVisibility, serializeLayout } from '../layout/panelLayout'
+import { deserializeLayout, getDefaultDesktopLayout, getDefaultPanelVisibility, getGraphModeDesktopLayout, GRAPH_MODE_PANEL_IDS, normalizeLayout, normalizePanelVisibility, serializeLayout } from '../layout/panelLayout'
 
 describe('panelLayout', () => {
   it('fills missing items when normalizing partial layout state', () => {
@@ -59,6 +59,19 @@ describe('panelLayout', () => {
     expect(restored).toEqual(serialized)
     expect(deserializeLayout(null)).toBeNull()
     expect(deserializeLayout('bad-payload')).toBeNull()
+  })
+
+  it('provides a focused graph mode layout for workspace, editor, and preview', () => {
+    const layout = getGraphModeDesktopLayout()
+
+    expect(GRAPH_MODE_PANEL_IDS).toEqual(['workspace', 'editor', 'preview'])
+    expect(layout.workspace.x).toBe(0)
+    expect(layout.editor.x).toBe(layout.workspace.x + layout.workspace.w)
+    expect(layout.preview.x).toBe(layout.editor.x + layout.editor.w)
+    expect(layout.workspace.y).toBe(0)
+    expect(layout.editor.y).toBe(0)
+    expect(layout.preview.y).toBe(0)
+    expect(layout.editor.h).toBe(layout.preview.h)
   })
 
   it('normalizes panel visibility with safe defaults', () => {

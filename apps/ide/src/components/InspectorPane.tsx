@@ -249,14 +249,35 @@ export function InspectorPane(props: InspectorPaneProps): JSX.Element {
       <div className="inspector-body">
         {props.selection.activeTab === 'story' ? (
           <div className="inspector-form">
-            <label>Full Timer Seconds<input value={storyForm.fullTimerSeconds} onChange={(event) => setStoryForm(state => ({ ...state, fullTimerSeconds: event.currentTarget.value }))} /></label>
-            <label>Full Timer Target<input value={storyForm.fullTimerTarget} onChange={(event) => setStoryForm(state => ({ ...state, fullTimerTarget: event.currentTarget.value }))} /></label>
-            <label>Full Timer Outcome<input value={storyForm.fullTimerOutcome} onChange={(event) => setStoryForm(state => ({ ...state, fullTimerOutcome: event.currentTarget.value }))} /></label>
-            <label>Story Ambience URL<input value={storyForm.storyAmbience} onChange={(event) => setStoryForm(state => ({ ...state, storyAmbience: event.currentTarget.value }))} /></label>
-            <label>Story Ambience Volume<input value={storyForm.storyAmbienceVolume} onChange={(event) => setStoryForm(state => ({ ...state, storyAmbienceVolume: event.currentTarget.value }))} /></label>
-            <label className="preview-follow-toggle"><input type="checkbox" checked={storyForm.storyAmbienceLoop} onChange={(event) => setStoryForm(state => ({ ...state, storyAmbienceLoop: event.currentTarget.checked }))} />Loop</label>
+            <label>Full Timer Seconds<input value={storyForm.fullTimerSeconds} onChange={(event) => {
+              const value = event.currentTarget.value
+              setStoryForm(state => ({ ...state, fullTimerSeconds: value }))
+            }} /></label>
+            <label>Full Timer Target<input value={storyForm.fullTimerTarget} onChange={(event) => {
+              const value = event.currentTarget.value
+              setStoryForm(state => ({ ...state, fullTimerTarget: value }))
+            }} /></label>
+            <label>Full Timer Outcome<input value={storyForm.fullTimerOutcome} onChange={(event) => {
+              const value = event.currentTarget.value
+              setStoryForm(state => ({ ...state, fullTimerOutcome: value }))
+            }} /></label>
+            <label>Story Ambience URL<input value={storyForm.storyAmbience} onChange={(event) => {
+              const value = event.currentTarget.value
+              setStoryForm(state => ({ ...state, storyAmbience: value }))
+            }} /></label>
+            <label>Story Ambience Volume<input value={storyForm.storyAmbienceVolume} onChange={(event) => {
+              const value = event.currentTarget.value
+              setStoryForm(state => ({ ...state, storyAmbienceVolume: value }))
+            }} /></label>
+            <label className="preview-follow-toggle"><input type="checkbox" checked={storyForm.storyAmbienceLoop} onChange={(event) => {
+              const checked = event.currentTarget.checked
+              setStoryForm(state => ({ ...state, storyAmbienceLoop: checked }))
+            }} />Loop</label>
             <label>Presentation Mode
-              <select value={storyForm.presentationMode} onChange={(event) => setStoryForm(state => ({ ...state, presentationMode: event.currentTarget.value as 'literary' | 'cinematic' }))}>
+              <select value={storyForm.presentationMode} onChange={(event) => {
+                const value = event.currentTarget.value as 'literary' | 'cinematic'
+                setStoryForm(state => ({ ...state, presentationMode: value }))
+              }}>
                 <option value="literary">literary</option>
                 <option value="cinematic">cinematic</option>
               </select>
@@ -278,14 +299,35 @@ export function InspectorPane(props: InspectorPaneProps): JSX.Element {
                 {props.sceneIndex.map(scene => <option key={scene.serial} value={scene.serial}>{scene.name}</option>)}
               </select>
             </label>
-            <label>Name<input value={sceneForm.name} onChange={(event) => setSceneForm(state => ({ ...state, name: event.currentTarget.value }))} /></label>
-            <label>First Section Target<input value={sceneForm.first} onChange={(event) => setSceneForm(state => ({ ...state, first: event.currentTarget.value }))} /></label>
-            <label>Sections (comma-separated)<input value={sceneForm.sectionsCsv} onChange={(event) => setSceneForm(state => ({ ...state, sectionsCsv: event.currentTarget.value }))} /></label>
-            <label>Scene Ambience URL<input value={sceneForm.ambience} onChange={(event) => setSceneForm(state => ({ ...state, ambience: event.currentTarget.value }))} /></label>
-            <label>Scene Ambience Volume<input value={sceneForm.ambienceVolume} onChange={(event) => setSceneForm(state => ({ ...state, ambienceVolume: event.currentTarget.value }))} /></label>
-            <label className="preview-follow-toggle"><input type="checkbox" checked={sceneForm.ambienceLoop} onChange={(event) => setSceneForm(state => ({ ...state, ambienceLoop: event.currentTarget.checked }))} />Loop</label>
+            <label>Name<input value={sceneForm.name} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSceneForm(state => ({ ...state, name: value }))
+            }} /></label>
+            <label>First Section Target<input value={sceneForm.first} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSceneForm(state => ({ ...state, first: value }))
+            }} /></label>
+            <label>Sections (comma-separated)<input value={sceneForm.sectionsCsv} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSceneForm(state => ({ ...state, sectionsCsv: value }))
+            }} /></label>
+            <label>Scene Ambience URL<input value={sceneForm.ambience} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSceneForm(state => ({ ...state, ambience: value }))
+            }} /></label>
+            <label>Scene Ambience Volume<input value={sceneForm.ambienceVolume} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSceneForm(state => ({ ...state, ambienceVolume: value }))
+            }} /></label>
+            <label className="preview-follow-toggle"><input type="checkbox" checked={sceneForm.ambienceLoop} onChange={(event) => {
+              const checked = event.currentTarget.checked
+              setSceneForm(state => ({ ...state, ambienceLoop: checked }))
+            }} />Loop</label>
             <label>Scene Transition
-              <select value={sceneForm.transition} onChange={(event) => setSceneForm(state => ({ ...state, transition: event.currentTarget.value }))}>
+              <select value={sceneForm.transition} onChange={(event) => {
+                const value = event.currentTarget.value
+                setSceneForm(state => ({ ...state, transition: value }))
+              }}>
                 <option value="cut">cut</option>
                 <option value="fade">fade</option>
                 <option value="dissolve">dissolve</option>
@@ -309,16 +351,43 @@ export function InspectorPane(props: InspectorPaneProps): JSX.Element {
                 {props.sectionSettingsIndex.map(section => <option key={section.sectionSerial} value={section.sectionSerial}>{section.sectionTitle}</option>)}
               </select>
             </label>
-            <label>Timer Seconds<input value={sectionForm.timerSeconds} onChange={(event) => setSectionForm(state => ({ ...state, timerSeconds: event.currentTarget.value }))} /></label>
-            <label>Timer Target<input value={sectionForm.timerTarget} onChange={(event) => setSectionForm(state => ({ ...state, timerTarget: event.currentTarget.value }))} /></label>
-            <label>Timer Outcome<input value={sectionForm.timerOutcome} onChange={(event) => setSectionForm(state => ({ ...state, timerOutcome: event.currentTarget.value }))} /></label>
-            <label>Ambience URL<input value={sectionForm.ambience} onChange={(event) => setSectionForm(state => ({ ...state, ambience: event.currentTarget.value }))} /></label>
-            <label>Ambience Volume<input value={sectionForm.ambienceVolume} onChange={(event) => setSectionForm(state => ({ ...state, ambienceVolume: event.currentTarget.value }))} /></label>
-            <label className="preview-follow-toggle"><input type="checkbox" checked={sectionForm.ambienceLoop} onChange={(event) => setSectionForm(state => ({ ...state, ambienceLoop: event.currentTarget.checked }))} />Loop</label>
-            <label>SFX (comma-separated)<input value={sectionForm.sfxCsv} onChange={(event) => setSectionForm(state => ({ ...state, sfxCsv: event.currentTarget.value }))} /></label>
-            <label>Backdrop URL<input value={sectionForm.backdrop} onChange={(event) => setSectionForm(state => ({ ...state, backdrop: event.currentTarget.value }))} /></label>
+            <label>Timer Seconds<input value={sectionForm.timerSeconds} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSectionForm(state => ({ ...state, timerSeconds: value }))
+            }} /></label>
+            <label>Timer Target<input value={sectionForm.timerTarget} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSectionForm(state => ({ ...state, timerTarget: value }))
+            }} /></label>
+            <label>Timer Outcome<input value={sectionForm.timerOutcome} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSectionForm(state => ({ ...state, timerOutcome: value }))
+            }} /></label>
+            <label>Ambience URL<input value={sectionForm.ambience} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSectionForm(state => ({ ...state, ambience: value }))
+            }} /></label>
+            <label>Ambience Volume<input value={sectionForm.ambienceVolume} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSectionForm(state => ({ ...state, ambienceVolume: value }))
+            }} /></label>
+            <label className="preview-follow-toggle"><input type="checkbox" checked={sectionForm.ambienceLoop} onChange={(event) => {
+              const checked = event.currentTarget.checked
+              setSectionForm(state => ({ ...state, ambienceLoop: checked }))
+            }} />Loop</label>
+            <label>SFX (comma-separated)<input value={sectionForm.sfxCsv} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSectionForm(state => ({ ...state, sfxCsv: value }))
+            }} /></label>
+            <label>Backdrop URL<input value={sectionForm.backdrop} onChange={(event) => {
+              const value = event.currentTarget.value
+              setSectionForm(state => ({ ...state, backdrop: value }))
+            }} /></label>
             <label>Shot
-              <select value={sectionForm.shot} onChange={(event) => setSectionForm(state => ({ ...state, shot: event.currentTarget.value }))}>
+              <select value={sectionForm.shot} onChange={(event) => {
+                const value = event.currentTarget.value
+                setSectionForm(state => ({ ...state, shot: value }))
+              }}>
                 <option value="wide">wide</option>
                 <option value="medium">medium</option>
                 <option value="close">close</option>
@@ -326,7 +395,10 @@ export function InspectorPane(props: InspectorPaneProps): JSX.Element {
               </select>
             </label>
             <label>Text Pacing
-              <select value={sectionForm.textPacing} onChange={(event) => setSectionForm(state => ({ ...state, textPacing: event.currentTarget.value }))}>
+              <select value={sectionForm.textPacing} onChange={(event) => {
+                const value = event.currentTarget.value
+                setSectionForm(state => ({ ...state, textPacing: value }))
+              }}>
                 <option value="instant">instant</option>
                 <option value="typed">typed</option>
                 <option value="cinematic">cinematic</option>
@@ -354,14 +426,26 @@ export function InspectorPane(props: InspectorPaneProps): JSX.Element {
               </select>
             </label>
             <label>Target Type
-              <select value={choiceForm.targetType} onChange={(event) => setChoiceForm(state => ({ ...state, targetType: event.currentTarget.value as 'section' | 'scene' }))}>
+              <select value={choiceForm.targetType} onChange={(event) => {
+                const value = event.currentTarget.value as 'section' | 'scene'
+                setChoiceForm(state => ({ ...state, targetType: value }))
+              }}>
                 <option value="section">section</option>
                 <option value="scene">scene</option>
               </select>
             </label>
-            <label>Target<input value={choiceForm.target} onChange={(event) => setChoiceForm(state => ({ ...state, target: event.currentTarget.value }))} /></label>
-            <label>Choice SFX<input value={choiceForm.choiceSfx} onChange={(event) => setChoiceForm(state => ({ ...state, choiceSfx: event.currentTarget.value }))} /></label>
-            <label>Focus SFX<input value={choiceForm.focusSfx} onChange={(event) => setChoiceForm(state => ({ ...state, focusSfx: event.currentTarget.value }))} /></label>
+            <label>Target<input value={choiceForm.target} onChange={(event) => {
+              const value = event.currentTarget.value
+              setChoiceForm(state => ({ ...state, target: value }))
+            }} /></label>
+            <label>Choice SFX<input value={choiceForm.choiceSfx} onChange={(event) => {
+              const value = event.currentTarget.value
+              setChoiceForm(state => ({ ...state, choiceSfx: value }))
+            }} /></label>
+            <label>Focus SFX<input value={choiceForm.focusSfx} onChange={(event) => {
+              const value = event.currentTarget.value
+              setChoiceForm(state => ({ ...state, focusSfx: value }))
+            }} /></label>
             <button type="button" className="mini-btn" onClick={applyChoice}>Apply Choice Settings</button>
           </div>
         ) : null}

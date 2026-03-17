@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import IFScript from 'if-script-core'
 import { analyzeStory } from '../analyzer/check'
+import { buildAuthorGraph } from '../graph/buildAuthorGraph'
 import { buildStoryGraph } from '../graph/buildStoryGraph'
 import { FALLBACK_AUTHORING_SCHEMA } from '../authoring/schema'
 import { buildChoiceIndex, buildSceneIndex, buildSectionSettingsIndex, buildStorySettingsIndex } from './authoringIndex'
@@ -138,6 +139,13 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
     const storySettingsIndex = buildStorySettingsIndex(story, request.entryFile)
     const sectionSettingsIndex = buildSectionSettingsIndex(story, request.entryFile)
     const choiceIndex = buildChoiceIndex(story, request.entryFile)
+    const authorGraph = buildAuthorGraph({
+      graph,
+      sectionIndex,
+      sceneIndex,
+      sectionSettingsIndex,
+      choiceIndex
+    })
     const maybeSchema = typeof (ifs as any).getAuthoringSchema === 'function'
       ? (ifs as any).getAuthoringSchema()
       : null
@@ -150,6 +158,7 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
       story: null,
       diagnostics,
       graph,
+      authorGraph,
       sectionIndex,
       sceneIndex,
       storySettingsIndex,
@@ -177,6 +186,11 @@ globalScope.onmessage = async (event: MessageEvent<ParseWorkerRequest>) => {
         edges: [],
         startNodeId: null,
         deadEnds: []
+      },
+      authorGraph: {
+        nodes: [],
+        edges: [],
+        groups: []
       },
       sectionIndex: [],
       sceneIndex: [],

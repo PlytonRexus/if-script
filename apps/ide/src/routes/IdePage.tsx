@@ -4,13 +4,14 @@ import { CommandPalette } from '../components/CommandPalette'
 import { DiagnosticsPanel } from '../components/DiagnosticsPanel'
 import { EditorPane } from '../components/EditorPane'
 import { GraphPane } from '../components/GraphPane'
+import { GraphWorkspacePane } from '../components/GraphWorkspacePane'
 import { InspectorPane } from '../components/InspectorPane'
 import { PlaytestInspectorPanel } from '../components/PlaytestInspectorPanel'
 import { PreviewPane } from '../components/PreviewPane'
-import { StoryboardPane } from '../components/StoryboardPane'
 import { Sidebar } from '../components/Sidebar'
 import { TopBar } from '../components/TopBar'
-import { DESKTOP_GRID_COLUMNS, DESKTOP_GRID_ROW_HEIGHT, PANEL_IDS, PANEL_LAYOUT_VERSION, deserializeLayout, fromGridLayout, getDefaultDesktopLayout, getDefaultPanelVisibility, isDesktopViewport, normalizePanelVisibility, serializeLayout, toGridLayout, type PanelVisibilityState } from '../layout/panelLayout'
+import { appendChoiceToSection, appendSectionScaffold, applyChoiceInspectorPatch, deleteSectionBySourceRange } from '../authoring/sourceTransforms'
+import { DESKTOP_GRID_COLUMNS, DESKTOP_GRID_ROW_HEIGHT, GRAPH_MODE_PANEL_IDS, PANEL_IDS, PANEL_LAYOUT_VERSION, deserializeLayout, fromGridLayout, getDefaultDesktopLayout, getDefaultPanelVisibility, getGraphModeDesktopLayout, isDesktopViewport, normalizePanelVisibility, serializeLayout, toGridLayout, type PanelVisibilityState } from '../layout/panelLayout'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { idbGet, idbSet } from '../lib/indexedDb'
 import { openWorkspaceFromDirectory, verifyDirectoryPermission, writeWorkspaceToDirectory } from '../lib/fsAccess'
@@ -22,6 +23,7 @@ import type {
   CommandPaletteMode,
   CommandPaletteItem,
   AdvancedInspectorSelection,
+  GraphLayoutState,
   RuntimeDebugState,
   IdeDiagnostic,
   PanelId,
@@ -62,7 +64,57 @@ const PANEL_TOGGLE_SHORT_LABELS: Record<PanelId, string> = {
   timings: 'Timing'
 }
 const AUTHOR_MODE_V1_ENABLED = true
-type AuthorMode = 'storyboard' | 'source'
+type AuthorMode = 'graph' | 'source'
+
+const DEFAULT_GRAPH_LAYOUT: GraphLayoutState = {
+  pinnedNodes: {},
+  collapsedGroupIds: [],
+  groupsVisible: false,
+  zoom: 1,
+  viewport: { x: 0, y: 0, zoom: 1 },
+  dockOpen: true,
+  visibleNodeCap: 60,
+  legendCollapsed: false
+}
+
+function normalizeGraphLayout(next?: GraphLayoutState | null): GraphLayoutState {
+  if (!next) return { ...DEFAULT_GRAPH_LAYOUT }
+  return {
+    ...DEFAULT_GRAPH_LAYOUT,
+    ...next,
+    pinnedNodes: next.pinnedNodes ?? {},
+    collapsedGroupIds: Array.isArray(next.collapsedGroupIds) ? next.collapsedGroupIds : [],
+    groupsVisible: next.groupsVisible === true,
+    viewport: next.viewport ?? DEFAULT_GRAPH_LAYOUT.viewport
+  }
+}
+
+function toGraphLayout(
+  legacy?: {
+    nodes: Record<string, { x: number, y: number, collapsed?: boolean }>
+    lanes: Record<string, { order: number }>
+    zoom: number
+  } | null,
+  next?: GraphLayoutState | null
+): GraphLayoutState {
+  if (next) return normalizeGraphLayout(next)
+  if (!legacy) return { ...DEFAULT_GRAPH_LAYOUT }
+  const pinnedNodes: GraphLayoutState['pinnedNodes'] = {}
+  Object.entries(legacy.nodes ?? {}).forEach(([id, position]) => {
+    pinnedNodes[id] = { x: position.x, y: position.y }
+  })
+  return normalizeGraphLayout({
+    ...DEFAULT_GRAPH_LAYOUT,
+    pinnedNodes,
+    zoom: legacy.zoom ?? 1,
+    viewport: { x: 0, y: 0, zoom: legacy.zoom ?? 1 }
+  })
+}
+
+function normalizeAuthorMode(mode: PersistedWorkspace['authorMode'] | 'storyboard' | undefined): AuthorMode {
+  if (mode === 'source') return 'source'
+  return 'graph'
+}
 
 interface PersistedWorkspace {
   manifest: WorkspaceManifest
@@ -81,7 +133,8 @@ interface PersistedWorkspace {
   previewAutoFollow?: boolean
   sectionVariablePresets?: Record<string, VariablePreset[]>
   inspectorSelection?: AdvancedInspectorSelection
-  authorMode?: AuthorMode
+  authorMode?: AuthorMode | 'storyboard'
+  graphLayout?: GraphLayoutState
   storyboardLayout?: {
     nodes: Record<string, { x: number, y: number, collapsed?: boolean }>
     lanes: Record<string, { order: number }>
@@ -103,6 +156,14 @@ function pickLineForNeedle(content: string, needle: string): number {
   return idx === -1 ? 1 : idx + 1
 }
 
+function nextSectionTitle(existingTitles: string[], base = 'New Section'): string {
+  const existing = new Set(existingTitles)
+  if (!existing.has(base)) return base
+  let idx = 2
+  while (existing.has(`${base} ${idx}`)) idx += 1
+  return `${base} ${idx}`
+}
+
 function readDesktopMode(): boolean {
   if (typeof window === 'undefined') return true
   return isDesktopViewport(window.innerWidth)
@@ -114,6 +175,7 @@ export function IdePage(): JSX.Element {
   const activeFilePath = useIdeStore(state => state.activeFilePath)
   const diagnostics = useIdeStore(state => state.diagnostics)
   const graph = useIdeStore(state => state.graph)
+  const authorGraph = useIdeStore(state => state.authorGraph)
   const sectionIndex = useIdeStore(state => state.sectionIndex)
   const sceneIndex = useIdeStore(state => state.sceneIndex)
   const storySettingsIndex = useIdeStore(state => state.storySettingsIndex)
@@ -171,12 +233,8 @@ export function IdePage(): JSX.Element {
   })
   const [panelLayout, setPanelLayout] = useState<PanelLayoutState>(() => getDefaultDesktopLayout())
   const [panelVisibility, setPanelVisibility] = useState<PanelVisibilityState>(() => getDefaultPanelVisibility())
-  const [authorMode, setAuthorMode] = useState<AuthorMode>(() => AUTHOR_MODE_V1_ENABLED ? 'storyboard' : 'source')
-  const [storyboardLayout, setStoryboardLayout] = useState({
-    nodes: {} as Record<string, { x: number, y: number, collapsed?: boolean }>,
-    lanes: {} as Record<string, { order: number }>,
-    zoom: 1
-  })
+  const [authorMode, setAuthorMode] = useState<AuthorMode>(() => AUTHOR_MODE_V1_ENABLED ? 'graph' : 'source')
+  const [graphLayout, setGraphLayout] = useState<GraphLayoutState>(() => ({ ...DEFAULT_GRAPH_LAYOUT }))
   const [desktopMode, setDesktopMode] = useState<boolean>(() => readDesktopMode())
   const workspaceLayoutRef = useRef<HTMLElement | null>(null)
   const workerRef = useRef<Worker | null>(null)
@@ -188,14 +246,19 @@ export function IdePage(): JSX.Element {
       .filter((file): file is WorkspaceFile => Boolean(file))
   }, [filesMap])
 
+  const graphModeDesktopLayout = useMemo(() => getGraphModeDesktopLayout(), [])
   const activeFile = filesMap[activeFilePath] ?? null
   const snapshot = useMemo(() => fileSnapshot(filesMap), [filesMap])
   const visiblePanelIds = useMemo(() => {
+    if (authorMode === 'graph') return GRAPH_MODE_PANEL_IDS
     return PANEL_IDS.filter(panelId => panelVisibility[panelId])
-  }, [panelVisibility])
+  }, [authorMode, panelVisibility])
   const desktopGridLayout = useMemo(() => {
+    if (authorMode === 'graph') {
+      return toGridLayout(graphModeDesktopLayout).filter(item => GRAPH_MODE_PANEL_IDS.includes(item.i as PanelId))
+    }
     return toGridLayout(panelLayout).filter(item => panelVisibility[item.i as PanelId])
-  }, [panelLayout, panelVisibility])
+  }, [authorMode, graphModeDesktopLayout, panelLayout, panelVisibility])
   const cursorFocusedSection = useMemo(() => {
     return resolveSectionAtCursor(sectionIndex, activeFilePath, cursorPosition?.line ?? null)
   }, [activeFilePath, cursorPosition?.line, sectionIndex])
@@ -260,9 +323,9 @@ export function IdePage(): JSX.Element {
       sectionVariablePresets,
       inspectorSelection,
       authorMode,
-      storyboardLayout
+      graphLayout
     })
-  }, [activeFilePath, authorMode, filesMap, inspectorSelection, manifest, previewAutoFollow, previewPinnedSectionKey, recentFilePaths, sectionPreviewOverrides, sectionVariablePresets, storyboardLayout, theme])
+  }, [activeFilePath, authorMode, filesMap, graphLayout, inspectorSelection, manifest, previewAutoFollow, previewPinnedSectionKey, recentFilePaths, sectionPreviewOverrides, sectionVariablePresets, theme])
 
   const runCheck = useCallback(() => {
     const worker = workerRef.current
@@ -291,6 +354,7 @@ export function IdePage(): JSX.Element {
       setDiagnosticsGraph({
         diagnostics: payload.diagnostics,
         graph: payload.graph,
+        authorGraph: payload.authorGraph,
         sectionIndex: payload.sectionIndex,
         sceneIndex: payload.sceneIndex,
         storySettingsIndex: payload.storySettingsIndex,
@@ -349,12 +413,8 @@ export function IdePage(): JSX.Element {
         sectionSerial: null,
         choiceId: null
       })
-      setAuthorMode(persisted.authorMode ?? (AUTHOR_MODE_V1_ENABLED ? 'storyboard' : 'source'))
-      setStoryboardLayout(persisted.storyboardLayout ?? {
-        nodes: {},
-        lanes: {},
-        zoom: 1
-      })
+      setAuthorMode(normalizeAuthorMode(persisted.authorMode))
+      setGraphLayout(toGraphLayout(persisted.storyboardLayout, persisted.graphLayout ?? null))
     })()
   }, [setRecentFilePaths, setTheme, setWorkspace])
 
@@ -422,14 +482,16 @@ export function IdePage(): JSX.Element {
   }, [panelVisibility, persistWorkspace])
 
   const togglePanelVisibility = useCallback((panelId: PanelId) => {
+    if (authorMode === 'graph') return
     if (!TOGGLABLE_PANEL_IDS.includes(panelId)) return
     setPanelVisibility(state => ({
       ...state,
       [panelId]: !state[panelId]
     }))
-  }, [])
+  }, [authorMode])
 
   const showAllPanels = useCallback(() => {
+    if (authorMode === 'graph') return
     setPanelVisibility(state => {
       const next = { ...state }
       TOGGLABLE_PANEL_IDS.forEach(panelId => {
@@ -437,7 +499,7 @@ export function IdePage(): JSX.Element {
       })
       return next
     })
-  }, [])
+  }, [authorMode])
 
   const updateFocusedSectionOverrides = useCallback((next: string) => {
     if (!previewSectionKey) return
@@ -503,8 +565,8 @@ export function IdePage(): JSX.Element {
     triggerPlaytest()
   }, [triggerPlaytest])
 
-  const switchToStoryboardMode = useCallback(() => {
-    setAuthorMode('storyboard')
+  const switchToGraphMode = useCallback(() => {
+    setAuthorMode('graph')
   }, [])
 
   const switchToSourceMode = useCallback(() => {
@@ -512,7 +574,7 @@ export function IdePage(): JSX.Element {
   }, [])
 
   const toggleAuthorMode = useCallback(() => {
-    setAuthorMode(mode => mode === 'storyboard' ? 'source' : 'storyboard')
+    setAuthorMode(mode => mode === 'graph' ? 'source' : 'graph')
   }, [])
 
   const jumpToDiagnostic = useCallback((diagnostic: IdeDiagnostic) => {
@@ -713,6 +775,81 @@ export function IdePage(): JSX.Element {
     }
   }, [filesMap, handleOpenScene, manifest.rootFile, sceneIndex, sectionIndex, setActiveFile])
 
+  const handleCreateGraphSection = useCallback((groupId: string) => {
+    const group = authorGraph.groups.find(entry => entry.id === groupId)
+    const targetFile = group?.file ?? activeFile?.path ?? manifest.rootFile
+    const file = filesMap[targetFile]
+    if (!file) return
+    const suggestedTitle = nextSectionTitle(sectionIndex.map(section => section.title))
+    const requestedTitle = window.prompt('Section title:', suggestedTitle)?.trim()
+    if (!requestedTitle) return
+    const result = appendSectionScaffold(file.content, { title: requestedTitle })
+    setFileContent(targetFile, result.content)
+    setActiveFile(targetFile)
+    setCursorTarget({ line: result.line, col: 1, nonce: Date.now() })
+  }, [activeFile?.path, authorGraph.groups, filesMap, manifest.rootFile, sectionIndex, setActiveFile, setFileContent])
+
+  const handleDeleteGraphSection = useCallback((nodeId: string) => {
+    const node = authorGraph.nodes.find(entry => entry.id === nodeId && entry.kind === 'section')
+    if (!node?.sectionSerial) return
+    const section = sectionIndex.find(entry => entry.serial === node.sectionSerial)
+    if (!section) return
+    const file = filesMap[section.file]
+    if (!file) return
+    const inbound = authorGraph.edges
+      .filter(edge => edge.toNodeId === nodeId)
+      .map(edge => authorGraph.nodes.find(candidate => candidate.id === edge.fromNodeId)?.label ?? edge.fromNodeId)
+    const inboundLabel = inbound.length > 0 ? `\nIncoming links: ${inbound.slice(0, 6).join(', ')}` : ''
+    const accepted = window.confirm(`Delete section "${section.title}"?${inboundLabel}`)
+    if (!accepted) return
+    const nextContent = deleteSectionBySourceRange(file.content, section.sourceRange)
+    setFileContent(section.file, nextContent)
+    setActiveFile(section.file)
+    setCursorTarget({ line: Math.max(1, section.line - 1), col: 1, nonce: Date.now() })
+  }, [authorGraph.edges, authorGraph.nodes, filesMap, sectionIndex, setActiveFile, setFileContent])
+
+  const handleCreateGraphChoice = useCallback((nodeId: string) => {
+    const node = authorGraph.nodes.find(entry => entry.id === nodeId && entry.kind === 'section')
+    if (!node?.sectionSerial) return
+    const section = sectionIndex.find(entry => entry.serial === node.sectionSerial)
+    if (!section) return
+    const file = filesMap[section.file]
+    if (!file) return
+    const targetSection = sectionIndex.find(entry => entry.serial !== section.serial) ?? section
+    const choiceText = window.prompt('Choice text:', 'Continue')?.trim()
+    if (!choiceText) return
+    const result = appendChoiceToSection(file.content, section, {
+      text: choiceText,
+      target: targetSection.serial,
+      targetType: 'section'
+    })
+    setFileContent(section.file, result.content)
+    setActiveFile(section.file)
+    setCursorTarget({ line: result.line, col: 1, nonce: Date.now() })
+  }, [authorGraph.nodes, filesMap, sectionIndex, setActiveFile, setFileContent])
+
+  const handleRetargetGraphChoice = useCallback((choiceId: string, targetNodeId: string) => {
+    const choice = choiceIndex.find(entry => entry.id === choiceId)
+    const targetNode = authorGraph.nodes.find(entry => entry.id === targetNodeId && entry.kind === 'section')
+    if (!choice || !targetNode?.sectionSerial) return
+    const file = filesMap[choice.file]
+    if (!file) return
+    const result = applyChoiceInspectorPatch(file.content, choice, {
+      targetType: 'section',
+      target: targetNode.sectionSerial,
+      input: choice.input,
+      when: choice.when,
+      once: choice.once,
+      disabledText: choice.disabledText,
+      actions: choice.actions,
+      choiceSfx: choice.choiceSfx,
+      focusSfx: choice.focusSfx,
+      choiceStyle: choice.choiceStyle
+    })
+    setFileContent(choice.file, result.content)
+    setActiveFile(choice.file)
+  }, [authorGraph.nodes, choiceIndex, filesMap, setActiveFile, setFileContent])
+
   const openDirectory = useCallback(async () => {
     try {
       const opened = await openWorkspaceFromDirectory()
@@ -736,8 +873,8 @@ export function IdePage(): JSX.Element {
         sectionSerial: null,
         choiceId: null
       })
-      setAuthorMode(AUTHOR_MODE_V1_ENABLED ? 'storyboard' : 'source')
-      setStoryboardLayout({ nodes: {}, lanes: {}, zoom: 1 })
+      setAuthorMode(AUTHOR_MODE_V1_ENABLED ? 'graph' : 'source')
+      setGraphLayout({ ...DEFAULT_GRAPH_LAYOUT })
       setRuntimeDebugState({ snapshot: null, lastUpdatedAt: null })
       saveCheckpoint()
     } catch (err) {
@@ -800,8 +937,8 @@ export function IdePage(): JSX.Element {
           sectionSerial: null,
           choiceId: null
         })
-        setAuthorMode(AUTHOR_MODE_V1_ENABLED ? 'storyboard' : 'source')
-        setStoryboardLayout(bundle.metadata?.storyboardLayout ?? { nodes: {}, lanes: {}, zoom: 1 })
+        setAuthorMode(AUTHOR_MODE_V1_ENABLED ? 'graph' : 'source')
+        setGraphLayout(toGraphLayout(bundle.metadata?.storyboardLayout, bundle.metadata?.graphLayout ?? null))
         setRuntimeDebugState({ snapshot: null, lastUpdatedAt: null })
       } catch (err) {
         window.alert(String((err as Error).message ?? err))
@@ -817,11 +954,11 @@ export function IdePage(): JSX.Element {
       manifest,
       files: snapshot,
       metadata: {
-        storyboardLayout
+        graphLayout
       }
     }
     downloadBundle(bundle, `${manifest.name.replace(/\s+/g, '-').toLowerCase() || 'if-project'}.ifproj.json`)
-  }, [manifest, snapshot, storyboardLayout])
+  }, [graphLayout, manifest, snapshot])
 
   const handleNewFile = useCallback(() => {
     const requested = window.prompt('New file path (relative or /workspace/...):', '/workspace/chapter-1.partial.if')
@@ -844,6 +981,7 @@ export function IdePage(): JSX.Element {
   }, [activeFile, deleteFile])
 
   const handleDesktopLayoutChange = useCallback((nextLayout: Layout) => {
+    if (authorMode === 'graph') return
     const parsed = fromGridLayout(nextLayout)
     setPanelLayout(current => {
       const next = { ...current }
@@ -853,7 +991,7 @@ export function IdePage(): JSX.Element {
       })
       return next
     })
-  }, [panelVisibility])
+  }, [authorMode, panelVisibility])
 
   const renderPanel = useCallback((panelId: PanelId): JSX.Element => {
     if (panelId === 'workspace') {
@@ -874,14 +1012,33 @@ export function IdePage(): JSX.Element {
     }
 
     if (panelId === 'editor') {
-      if (authorMode === 'storyboard') {
+      if (authorMode === 'graph') {
         return (
-          <StoryboardPane
+          <GraphWorkspacePane
+            graph={authorGraph}
+            selectedNodeId={focusedSectionNodeId}
+            activeFile={activeFile}
+            diagnostics={diagnostics}
+            parseStatus={parseStatus}
+            authoringSchema={authoringSchema}
+            sectionTitles={sectionTitlesForCompletion}
+            variableNames={variableNamesForCompletion}
+            cursorTarget={cursorTarget}
             sectionIndex={sectionIndex}
-            sceneIndex={sceneIndex}
-            graph={graph}
-            onOpenSection={handleOpenSection}
-            onOpenScene={handleOpenScene}
+            sectionSettingsIndex={sectionSettingsIndex}
+            choiceIndex={choiceIndex}
+            layoutState={graphLayout}
+            onLayoutStateChange={setGraphLayout}
+            onCursorChange={setCursorPosition}
+            onChangeSource={(next) => {
+              if (!activeFile) return
+              setFileContent(activeFile.path, next)
+            }}
+            onSelectNode={jumpToGraphNode}
+            onCreateSection={handleCreateGraphSection}
+            onDeleteSection={handleDeleteGraphSection}
+            onCreateChoice={handleCreateGraphChoice}
+            onRetargetChoice={handleRetargetGraphChoice}
           />
         )
       }
@@ -988,6 +1145,7 @@ export function IdePage(): JSX.Element {
     activeFile,
     activeFilePath,
     addRuntimeEvent,
+    authorGraph,
     authorMode,
     authoringSchema,
     choiceIndex,
@@ -1010,7 +1168,12 @@ export function IdePage(): JSX.Element {
     focusedPresets,
     focusedSectionNodeId,
     graph,
+    graphLayout,
+    handleCreateGraphChoice,
+    handleCreateGraphSection,
+    handleDeleteGraphSection,
     handlePreviewAutoFollowChange,
+    handleRetargetGraphChoice,
     jumpToDiagnostic,
     jumpToGraphNode,
     loadSectionPreset,
@@ -1127,22 +1290,13 @@ export function IdePage(): JSX.Element {
         run: () => { void importBundle() }
       },
       {
-        id: 'cmd-show-all-panels',
-        title: 'Show All Panels',
-        category: 'Layout',
-        shortcut: 'Palette',
-        kind: 'command',
-        keywords: ['panel', 'layout', 'show'],
-        run: showAllPanels
-      },
-      {
-        id: 'cmd-mode-storyboard',
-        title: 'Switch to Storyboard Mode',
+        id: 'cmd-mode-graph',
+        title: 'Switch to Graph Mode',
         category: 'Authoring',
         shortcut: 'Palette',
         kind: 'command',
-        keywords: ['author', 'storyboard', 'visual'],
-        run: switchToStoryboardMode
+        keywords: ['author', 'graph', 'visual'],
+        run: switchToGraphMode
       },
       {
         id: 'cmd-mode-source',
@@ -1154,7 +1308,18 @@ export function IdePage(): JSX.Element {
         run: switchToSourceMode
       }
     ]
-    const panelCommandItems: CommandPaletteItem[] = TOGGLABLE_PANEL_IDS.map((panelId) => {
+    if (authorMode === 'source') {
+      commandItems.splice(8, 0, {
+        id: 'cmd-show-all-panels',
+        title: 'Show All Panels',
+        category: 'Layout',
+        shortcut: 'Palette',
+        kind: 'command',
+        keywords: ['panel', 'layout', 'show'],
+        run: showAllPanels
+      })
+    }
+    const panelCommandItems: CommandPaletteItem[] = authorMode === 'source' ? TOGGLABLE_PANEL_IDS.map((panelId) => {
       const visible = panelVisibility[panelId]
       return {
         id: `cmd-toggle-panel-${panelId}`,
@@ -1165,7 +1330,7 @@ export function IdePage(): JSX.Element {
         keywords: ['panel', 'layout', panelId, visible ? 'hide' : 'show'],
         run: () => togglePanelVisibility(panelId)
       }
-    })
+    }) : []
 
     const fileItems: CommandPaletteItem[] = filesByRecency.map((file) => {
       const relative = file.path.replace('/workspace/', '')
@@ -1207,7 +1372,16 @@ export function IdePage(): JSX.Element {
     })
 
     return [...commandItems, ...panelCommandItems, ...fileItems, ...sectionItems, ...sceneItems]
-  }, [exportBundle, filesByRecency, handleNewFile, handleOpenScene, handleOpenSection, handlePlaytest, importBundle, openDirectory, openPalette, panelVisibility, runCheck, saveLocal, sceneIndex, sectionIndex, setActiveFile, showAllPanels, switchToSourceMode, switchToStoryboardMode, togglePanelVisibility])
+  }, [authorMode, exportBundle, filesByRecency, handleNewFile, handleOpenScene, handleOpenSection, handlePlaytest, importBundle, openDirectory, openPalette, panelVisibility, runCheck, saveLocal, sceneIndex, sectionIndex, setActiveFile, showAllPanels, switchToGraphMode, switchToSourceMode, togglePanelVisibility])
+
+  const panelToggleItems = useMemo(() => {
+    if (authorMode === 'graph') return []
+    return TOGGLABLE_PANEL_IDS.map(panelId => ({
+      id: panelId,
+      label: PANEL_TOGGLE_SHORT_LABELS[panelId],
+      visible: panelVisibility[panelId]
+    }))
+  }, [authorMode, panelVisibility])
 
   useKeyboardShortcuts({
     onCommandPalette: toggleCommandPalette,
@@ -1239,11 +1413,7 @@ export function IdePage(): JSX.Element {
         authorMode={authorMode}
         onToggleAuthorMode={toggleAuthorMode}
         onCommandPalette={toggleCommandPalette}
-        panelToggleItems={TOGGLABLE_PANEL_IDS.map(panelId => ({
-          id: panelId,
-          label: PANEL_TOGGLE_SHORT_LABELS[panelId],
-          visible: panelVisibility[panelId]
-        }))}
+        panelToggleItems={panelToggleItems}
         onTogglePanel={togglePanelVisibility}
         onShowAllPanels={showAllPanels}
       />
@@ -1257,8 +1427,8 @@ export function IdePage(): JSX.Element {
             rowHeight={DESKTOP_GRID_ROW_HEIGHT}
             margin={GRID_MARGIN}
             containerPadding={GRID_CONTAINER_PADDING}
-            isDraggable
-            isResizable
+            isDraggable={authorMode !== 'graph'}
+            isResizable={authorMode !== 'graph'}
             compactType="vertical"
             draggableHandle=".panel-header"
             draggableCancel={DRAG_CANCEL_SELECTOR}

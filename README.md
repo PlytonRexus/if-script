@@ -2,6 +2,9 @@
 
 Fresh rewrite of the IF-Script IDE built as a modern web-first PWA.
 
+Current direction:
+- Graph-first authoring for non-coders, with source mode retained as the advanced fallback.
+
 ## Active App
 - Path: `apps/ide`
 - Stack: React + TypeScript + Vite + Monaco + Zustand

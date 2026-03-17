@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type {
+  AuthorGraphModel,
   AuthoringSchema,
   ChoiceIndexEntry,
   IdeDiagnostic,
@@ -72,6 +73,7 @@ interface IdeState {
   activeFilePath: string
   diagnostics: IdeDiagnostic[]
   graph: StoryGraph
+  authorGraph: AuthorGraphModel
   sectionIndex: SectionIndexEntry[]
   sceneIndex: SceneIndexEntry[]
   storySettingsIndex: StorySettingsIndexEntry | null
@@ -99,6 +101,7 @@ interface IdeState {
   setDiagnosticsGraph: (input: {
     diagnostics: IdeDiagnostic[]
     graph: StoryGraph
+    authorGraph: AuthorGraphModel
     sectionIndex: SectionIndexEntry[]
     sceneIndex: SceneIndexEntry[]
     storySettingsIndex: StorySettingsIndexEntry | null
@@ -133,6 +136,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
   activeFilePath: initial.activeFilePath,
   diagnostics: [],
   graph: { nodes: [], edges: [], startNodeId: null, deadEnds: [] },
+  authorGraph: { nodes: [], edges: [], groups: [] },
   sectionIndex: [],
   sceneIndex: [],
   storySettingsIndex: null,
@@ -162,6 +166,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
       activeFilePath: activeFilePath ?? manifest.rootFile,
       diagnostics: [],
       graph: { nodes: [], edges: [], startNodeId: null, deadEnds: [] },
+      authorGraph: { nodes: [], edges: [], groups: [] },
       sectionIndex: [],
       sceneIndex: [],
       storySettingsIndex: null,
@@ -298,6 +303,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
   setDiagnosticsGraph: ({
     diagnostics,
     graph,
+    authorGraph,
     sectionIndex,
     sceneIndex,
     storySettingsIndex,
@@ -314,6 +320,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
     set({
       diagnostics,
       graph,
+      authorGraph,
       sectionIndex,
       sceneIndex,
       storySettingsIndex,

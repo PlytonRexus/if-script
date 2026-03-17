@@ -12,6 +12,7 @@ export const PANEL_IDS: PanelId[] = [
   'runtime',
   'timings'
 ]
+export const GRAPH_MODE_PANEL_IDS: PanelId[] = ['workspace', 'editor', 'preview']
 
 export const DESKTOP_BREAKPOINT_PX = 1180
 export const DESKTOP_GRID_COLUMNS = 12
@@ -68,6 +69,14 @@ export function getDefaultDesktopLayout(): PanelLayoutState {
   PANEL_IDS.forEach((panelId) => {
     out[panelId] = { ...DEFAULT_LAYOUT[panelId] }
   })
+  return out
+}
+
+export function getGraphModeDesktopLayout(): PanelLayoutState {
+  const out = getDefaultDesktopLayout()
+  out.workspace = { x: 0, y: 0, w: 2, h: 28, minW: 2, minH: 10 }
+  out.editor = { x: 2, y: 0, w: 7, h: 28, minW: 4, minH: 12 }
+  out.preview = { x: 9, y: 0, w: 3, h: 28, minW: 3, minH: 12 }
   return out
 }
 

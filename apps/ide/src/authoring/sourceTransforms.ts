@@ -1,4 +1,4 @@
-import type { ChoiceIndexEntry, SceneIndexEntry, SectionSettingsIndexEntry, StorySettingsIndexEntry } from '../types/interfaces'
+import type { ChoiceIndexEntry, SceneIndexEntry, SectionIndexEntry, SectionSettingsIndexEntry, SourceRange, StorySettingsIndexEntry } from '../types/interfaces'
 
 interface RewriteEntry {
   keyword: string
@@ -406,5 +406,76 @@ export function applyChoiceInspectorPatch(content: string, choice: ChoiceIndexEn
     content: joinLines(lines),
     syntaxPreview: commonEntries.flatMap(entry => entry.lines).join('\n'),
     unsupportedWriterChoice: false
+  }
+}
+
+export function appendSectionScaffold(content: string, input: {
+  title: string
+  bodyText?: string
+}): { content: string, line: number } {
+  const normalized = content.replace(/\r\n/g, '\n').replace(/\s*$/, '')
+  const line = normalized.length === 0 ? 1 : normalized.split('\n').length + 2
+  const separator = normalized.length === 0 ? '' : '\n\n'
+  const safeTitle = input.title.trim() || 'New Section'
+  const safeBody = (input.bodyText?.trim() || `${safeTitle}.`).replace(/"/g, '\\"')
+  return {
+    content: `${normalized}${separator}section "${safeTitle.replace(/"/g, '\\"')}"\n  "${safeBody}"\nend\n`,
+    line
+  }
+}
+
+export function deleteSectionBySourceRange(content: string, range: SourceRange | null | undefined): string {
+  if (!range?.startLine || !range?.endLine) return content
+  const lines = splitLines(content)
+  const start = Math.max(0, range.startLine - 1)
+  const end = Math.min(lines.length, range.endLine)
+  if (start >= end) return content
+  lines.splice(start, end - start)
+  while (lines.length > 1 && lines[start] === '' && lines[start - 1] === '') {
+    lines.splice(start, 1)
+  }
+  return joinLines(lines)
+}
+
+export function appendChoiceToSection(content: string, section: SectionIndexEntry | SectionSettingsIndexEntry, input: {
+  text: string
+  target: string | number
+  targetType?: 'section' | 'scene'
+}): { content: string, line: number } {
+  const lines = splitLines(content)
+  const block = findSectionBlock(lines, {
+    sectionSerial: 'sectionSerial' in section ? section.sectionSerial : section.serial,
+    sectionTitle: 'sectionTitle' in section ? section.sectionTitle : section.title,
+    file: section.file,
+    line: section.line,
+    col: section.col,
+    timerSeconds: null,
+    timerTarget: null,
+    timerOutcome: null,
+    ambience: null,
+    ambienceVolume: 1,
+    ambienceLoop: true,
+    sfx: [],
+    backdrop: null,
+    shot: 'medium',
+    textPacing: 'instant'
+  })
+  if (!block) return { content, line: section.line }
+
+  const endLine = Math.max(block.start + 1, block.end)
+  const closer = lines[endLine]
+  const match = closer?.match(/^(\s*)/)
+  const endIndent = match?.[1] ?? ''
+  const indent = `${endIndent}  `
+  const prefix = input.targetType === 'scene' ? 'scene ' : ''
+  const target = typeof input.target === 'number'
+    ? String(input.target)
+    : `"${input.target.trim().replace(/"/g, '\\"')}"`
+  const text = input.text.trim().replace(/"/g, '\\"') || 'Continue'
+  const insertedLine = `${indent}-> "${text}" => ${prefix}${target}`
+  lines.splice(endLine, 0, insertedLine)
+  return {
+    content: joinLines(lines),
+    line: endLine + 1
   }
 }
