@@ -4,6 +4,7 @@ import type {
   AuthoringSchema,
   ChoiceIndexEntry,
   IdeDiagnostic,
+  RuntimeErrorEntry,
   RuntimeEventEntry,
   SceneIndexEntry,
   SectionContentIndexEntry,
@@ -91,6 +92,7 @@ interface IdeState {
   commandPaletteOpen: boolean
   theme: 'day' | 'night'
   runtimeEvents: RuntimeEventEntry[]
+  runtimeErrors: RuntimeErrorEntry[]
   fsRootHandle: any | null
   playtestNonce: number
   setWorkspace: (payload: { manifest: WorkspaceManifest, files: Record<string, WorkspaceFile>, activeFilePath?: string }) => void
@@ -122,7 +124,9 @@ interface IdeState {
   setTheme: (value: 'day' | 'night') => void
   toggleTheme: () => void
   addRuntimeEvent: (entry: RuntimeEventEntry) => void
+  addRuntimeError: (entry: RuntimeErrorEntry) => void
   clearRuntimeEvents: () => void
+  clearRuntimeErrors: () => void
   setFsRootHandle: (handle: any | null) => void
   saveCheckpoint: () => void
   triggerPlaytest: () => void
@@ -156,6 +160,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
   commandPaletteOpen: false,
   theme: 'day',
   runtimeEvents: [],
+  runtimeErrors: [],
   fsRootHandle: null,
   playtestNonce: 0,
 
@@ -182,6 +187,7 @@ export const useIdeStore = create<IdeState>((set, get) => ({
       sectionVariableNamesBySerial: {},
       parseStatus: 'idle',
       runtimeEvents: [],
+      runtimeErrors: [],
       recentFilePaths: [activeFilePath ?? manifest.rootFile]
     })
   },
@@ -362,8 +368,16 @@ export const useIdeStore = create<IdeState>((set, get) => ({
     set(state => ({ runtimeEvents: [entry, ...state.runtimeEvents].slice(0, 150) }))
   },
 
+  addRuntimeError: (entry) => {
+    set(state => ({ runtimeErrors: [entry, ...state.runtimeErrors].slice(0, 150) }))
+  },
+
   clearRuntimeEvents: () => {
     set({ runtimeEvents: [] })
+  },
+
+  clearRuntimeErrors: () => {
+    set({ runtimeErrors: [] })
   },
 
   setFsRootHandle: (handle) => {

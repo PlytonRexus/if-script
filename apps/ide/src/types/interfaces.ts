@@ -470,6 +470,35 @@ export interface RuntimeEventEntry {
   payload: unknown
 }
 
+export type RuntimeErrorSeverity = 'error'
+
+export type RuntimeErrorPhase = 'startup' | 'execution' | 'interaction' | 'restore'
+
+export interface RuntimeErrorSourceLocation {
+  file: string | null
+  line: number | null
+  col: number | null
+  startLine?: number | null
+  startCol?: number | null
+  endLine?: number | null
+  endCol?: number | null
+}
+
+export interface RuntimeErrorEntry {
+  id: string
+  at: string
+  message: string
+  code: string
+  phase: RuntimeErrorPhase
+  severity: RuntimeErrorSeverity
+  sectionSerial: number | null
+  sceneSerial: number | null
+  location: RuntimeErrorSourceLocation | null
+  summary: string
+  details: unknown
+  traceId?: string | null
+}
+
 export interface RuntimeDebugSnapshot {
   engine: {
     section: { serial: number, title: string | null } | null

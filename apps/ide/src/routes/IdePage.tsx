@@ -31,6 +31,7 @@ import type {
   PanelLayoutState,
   ParseWorkerRequest,
   ParseWorkerResponse,
+  RuntimeErrorEntry,
   RuntimeEventEntry,
   SectionWriterInput,
   VariablePreset,
@@ -172,6 +173,7 @@ export function IdePage(): JSX.Element {
   const fsRootHandle = useIdeStore(state => state.fsRootHandle)
   const playtestNonce = useIdeStore(state => state.playtestNonce)
   const runtimeEvents = useIdeStore(state => state.runtimeEvents)
+  const runtimeErrors = useIdeStore(state => state.runtimeErrors)
 
   const setWorkspace = useIdeStore(state => state.setWorkspace)
   const setActiveFile = useIdeStore(state => state.setActiveFile)
@@ -187,7 +189,9 @@ export function IdePage(): JSX.Element {
   const toggleTheme = useIdeStore(state => state.toggleTheme)
   const setTheme = useIdeStore(state => state.setTheme)
   const addRuntimeEvent = useIdeStore(state => state.addRuntimeEvent)
+  const addRuntimeError = useIdeStore(state => state.addRuntimeError)
   const clearRuntimeEvents = useIdeStore(state => state.clearRuntimeEvents)
+  const clearRuntimeErrors = useIdeStore(state => state.clearRuntimeErrors)
   const setFsRootHandle = useIdeStore(state => state.setFsRootHandle)
   const saveCheckpoint = useIdeStore(state => state.saveCheckpoint)
   const triggerPlaytest = useIdeStore(state => state.triggerPlaytest)
@@ -648,6 +652,39 @@ export function IdePage(): JSX.Element {
     }
   }, [handleOpenScene, handleOpenSection, sceneIndex, sectionIndex])
 
+  const handleOpenRuntimeErrorSource = useCallback((error: RuntimeErrorEntry) => {
+    if (error.location?.file && filesMap[error.location.file]) {
+      setActiveFile(error.location.file)
+      setCursorTarget({
+        line: error.location.line ?? error.location.startLine ?? 1,
+        col: error.location.col ?? error.location.startCol ?? 1,
+        nonce: Date.now()
+      })
+      return
+    }
+
+    if (typeof error.sectionSerial === 'number') {
+      const section = sectionIndex.find(entry => entry.serial === error.sectionSerial)
+      if (section) {
+        handleOpenSection(section)
+        setInspectorSelection(state => ({ ...state, activeTab: 'section', sectionSerial: section.serial }))
+        return
+      }
+    }
+
+    if (typeof error.sceneSerial === 'number') {
+      const scene = sceneIndex.find(entry => entry.serial === error.sceneSerial)
+      if (scene) {
+        handleOpenScene(scene)
+      }
+    }
+  }, [filesMap, handleOpenScene, handleOpenSection, sceneIndex, sectionIndex, setActiveFile])
+
+  const handleClearRuntimeDebug = useCallback(() => {
+    clearRuntimeEvents()
+    clearRuntimeErrors()
+  }, [clearRuntimeErrors, clearRuntimeEvents])
+
   const handleApplyDiagnosticQuickFix = useCallback((diagnostic: IdeDiagnostic) => {
     const quickFix = diagnostic.data
     const target = (quickFix?.target?.trim() || diagnostic.message.match(/"([^"]+)"/)?.[1]?.trim()) ?? ''
@@ -1100,6 +1137,7 @@ export function IdePage(): JSX.Element {
           onTogglePreviewPin={handleTogglePreviewPin}
           playtestNonce={playtestNonce}
           onRuntimeEvent={(entry: RuntimeEventEntry) => addRuntimeEvent(entry)}
+          onRuntimeError={(entry: RuntimeErrorEntry) => addRuntimeError(entry)}
           onRuntimeDebugSnapshot={(snapshotPayload) => setRuntimeDebugState({
             snapshot: (snapshotPayload as RuntimeDebugState['snapshot']) ?? null,
             lastUpdatedAt: new Date().toISOString()
@@ -1120,9 +1158,11 @@ export function IdePage(): JSX.Element {
       return (
         <PlaytestInspectorPanel
           events={runtimeEvents}
+          errors={runtimeErrors}
           debugState={runtimeDebugState}
-          onClear={clearRuntimeEvents}
+          onClear={handleClearRuntimeDebug}
           onOpenEventSource={handleOpenRuntimeEventSource}
+          onOpenErrorSource={handleOpenRuntimeErrorSource}
         />
       )
     }
@@ -1144,15 +1184,19 @@ export function IdePage(): JSX.Element {
     activeFile,
     activeFilePath,
     addRuntimeEvent,
+    addRuntimeError,
     authorGraph,
     authorMode,
     authoringSchema,
     choiceIndex,
+    clearRuntimeErrors,
     clearRuntimeEvents,
     cursorTarget,
     filesMap,
     handleApplyDiagnosticQuickFix,
     handleOpenScene,
+    handleClearRuntimeDebug,
+    handleOpenRuntimeErrorSource,
     handleOpenRuntimeEventSource,
     handleOpenSection,
     handleTogglePreviewPin,
@@ -1185,6 +1229,7 @@ export function IdePage(): JSX.Element {
     previewAutoFollow,
     previewPinnedSectionKey,
     previewSection,
+    runtimeErrors,
     runtimeEvents,
     runtimeDebugState,
     saveSectionPreset,

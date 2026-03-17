@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
-import type { RuntimeDebugState, RuntimeEventEntry } from '../types/interfaces'
+import type { RuntimeDebugState, RuntimeErrorEntry, RuntimeEventEntry } from '../types/interfaces'
 
-type DebugTab = 'timeline' | 'audio' | 'timers' | 'scene' | 'issues'
+type DebugTab = 'timeline' | 'audio' | 'timers' | 'scene' | 'errors'
 
 interface PlaytestInspectorPanelProps {
   events: RuntimeEventEntry[]
+  errors: RuntimeErrorEntry[]
   debugState: RuntimeDebugState
   onClear: () => void
   onOpenEventSource?: (event: RuntimeEventEntry) => void
+  onOpenErrorSource?: (error: RuntimeErrorEntry) => void
 }
 
 function formatTime(iso: string): string {
@@ -29,28 +31,6 @@ export function PlaytestInspectorPanel(props: PlaytestInspectorPanelProps): JSX.
   const scene = props.debugState.snapshot?.engine?.scene ?? null
   const section = props.debugState.snapshot?.engine?.section ?? null
 
-  const issues = useMemo(() => {
-    const out: string[] = []
-    const channels = audioState?.channels
-    const ui = audioState?.ui
-    if (channels && !channels.storyAmbienceUrl && !channels.sceneMusicUrl && !channels.ambienceUrl) {
-      out.push('No active audio URLs. Check @storyAmbience/@sceneAmbience/@ambience settings.')
-    }
-    if (ui && ui.hasLoadedAudio && !ui.playing && ui.enabled && !ui.paused) {
-      out.push('Audio loaded but not currently playing. Browser autoplay policy may be blocking playback.')
-    }
-    if (channels && channels.storyAmbienceUrl && (channels.sceneMusicUrl || channels.ambienceUrl)) {
-      out.push('Story ambience is superseded by higher-priority scene/section ambience.')
-    }
-    if (timers.length === 0) {
-      out.push('No active timers. Verify @fullTimer/@timer configuration if expected.')
-    }
-    if (!scene) {
-      out.push('Current section is not mapped to any scene.')
-    }
-    return out
-  }, [audioState?.channels, audioState?.ui, scene, timers.length])
-
   function hasSourceHint(event: RuntimeEventEntry): boolean {
     if (event.category === 'scene' || event.category === 'timer') return true
     const payload = typeof event.payload === 'object' && event.payload !== null
@@ -66,6 +46,29 @@ export function PlaytestInspectorPanel(props: PlaytestInspectorPanelProps): JSX.
     return false
   }
 
+  const errorCountLabel = useMemo(() => {
+    return props.errors.length > 0 ? `Errors (${props.errors.length})` : 'Errors'
+  }, [props.errors.length])
+
+  function formatLocation(error: RuntimeErrorEntry): string | null {
+    if (!error.location) return null
+    const line = error.location.line ?? error.location.startLine ?? 0
+    const col = error.location.col ?? error.location.startCol ?? 0
+    const file = error.location.file ?? '<unknown>'
+    return `${file}:${line}:${col}`
+  }
+
+  function formatContext(error: RuntimeErrorEntry): string | null {
+    const parts: string[] = []
+    if (typeof error.sceneSerial === 'number') parts.push(`Scene #${error.sceneSerial}`)
+    if (typeof error.sectionSerial === 'number') parts.push(`Section #${error.sectionSerial}`)
+    return parts.length > 0 ? parts.join(' • ') : null
+  }
+
+  function hasErrorSource(error: RuntimeErrorEntry): boolean {
+    return Boolean(error.location?.file) || typeof error.sceneSerial === 'number' || typeof error.sectionSerial === 'number'
+  }
+
   return (
     <section className="panel runtime-events">
       <div className="panel-header">
@@ -78,7 +81,7 @@ export function PlaytestInspectorPanel(props: PlaytestInspectorPanelProps): JSX.
         <button type="button" className={['mini-btn', tab === 'audio' ? 'active' : ''].join(' ')} onClick={() => setTab('audio')}>Audio</button>
         <button type="button" className={['mini-btn', tab === 'timers' ? 'active' : ''].join(' ')} onClick={() => setTab('timers')}>Timers</button>
         <button type="button" className={['mini-btn', tab === 'scene' ? 'active' : ''].join(' ')} onClick={() => setTab('scene')}>Scene Flow</button>
-        <button type="button" className={['mini-btn', tab === 'issues' ? 'active' : ''].join(' ')} onClick={() => setTab('issues')}>Why Not?</button>
+        <button type="button" className={['mini-btn', tab === 'errors' ? 'active' : ''].join(' ')} onClick={() => setTab('errors')}>{errorCountLabel}</button>
       </div>
 
       <div className="event-list">
@@ -144,13 +147,27 @@ export function PlaytestInspectorPanel(props: PlaytestInspectorPanelProps): JSX.
           </article>
         ) : null}
 
-        {tab === 'issues' ? (
+        {tab === 'errors' ? (
           <>
-            {issues.length === 0 ? <p className="empty-message">No obvious issues detected.</p> : null}
-            {issues.map((issue, idx) => (
-              <article key={`issue-${idx}`} className="event-item">
-                <header><strong>Hint</strong><time>diagnostic</time></header>
-                <p className="event-summary">{issue}</p>
+            {props.errors.length === 0 ? <p className="empty-message">No runtime errors.</p> : null}
+            {props.errors.map((error) => (
+              <article key={error.id} className="event-item">
+                <header>
+                  <strong>{error.code}</strong>
+                  <time>{formatTime(error.at)}</time>
+                </header>
+                <p className="event-summary">{error.summary}</p>
+                {error.message !== error.summary ? <p className="event-summary">{error.message}</p> : null}
+                {formatContext(error) ? <p className="event-summary">{formatContext(error)}</p> : null}
+                {formatLocation(error) ? <p className="event-summary">{formatLocation(error)}</p> : null}
+                {props.onOpenErrorSource && hasErrorSource(error) ? (
+                  <p className="event-summary">
+                    <button type="button" className="mini-btn" onClick={() => props.onOpenErrorSource?.(error)}>
+                      Open source
+                    </button>
+                  </p>
+                ) : null}
+                <pre>{JSON.stringify(error.details, null, 2)}</pre>
               </article>
             ))}
           </>

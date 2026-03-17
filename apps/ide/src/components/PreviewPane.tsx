@@ -16,6 +16,9 @@ import {
 } from '../preview/sectionPreview'
 import type {
   RuntimeDebugCategory,
+  RuntimeErrorEntry,
+  RuntimeErrorPhase,
+  RuntimeErrorSourceLocation,
   RuntimeEventEntry,
   SectionIndexEntry,
   VariableCatalogEntry,
@@ -65,6 +68,7 @@ interface PreviewPaneProps {
   onTogglePreviewPin: () => void
   playtestNonce: number
   onRuntimeEvent: (entry: RuntimeEventEntry) => void
+  onRuntimeError: (entry: RuntimeErrorEntry) => void
   onRuntimeDebugSnapshot: (snapshot: unknown | null) => void
 }
 
@@ -116,6 +120,92 @@ function summaryForEvent(eventName: string, payload: any): string {
   return eventName.replaceAll('_', ' ')
 }
 
+function normalizeRuntimeErrorLocation(input: unknown): RuntimeErrorSourceLocation | null {
+  if (!input || typeof input !== 'object') return null
+  const record = input as Record<string, unknown>
+  const location: RuntimeErrorSourceLocation = {
+    file: typeof record.file === 'string' ? record.file : null,
+    line: typeof record.line === 'number' ? record.line : null,
+    col: typeof record.col === 'number' ? record.col : null,
+    startLine: typeof record.startLine === 'number' ? record.startLine : null,
+    startCol: typeof record.startCol === 'number' ? record.startCol : null,
+    endLine: typeof record.endLine === 'number' ? record.endLine : null,
+    endCol: typeof record.endCol === 'number' ? record.endCol : null
+  }
+  const hasValue = Object.values(location).some(value => value !== null)
+  return hasValue ? location : null
+}
+
+function isRuntimeExceptionPayload(payload: unknown): payload is Record<string, unknown> {
+  return typeof payload === 'object' &&
+    payload !== null &&
+    (payload as Record<string, unknown>).kind === 'exception' &&
+    (payload as Record<string, unknown>).severity === 'error'
+}
+
+function buildRuntimeErrorEntry(input: {
+  at?: string
+  code: string
+  message: string
+  summary?: string
+  phase: RuntimeErrorPhase
+  sectionSerial?: number | null
+  sceneSerial?: number | null
+  location?: RuntimeErrorSourceLocation | null
+  details?: unknown
+  traceId?: string | null
+}): RuntimeErrorEntry {
+  const at = input.at ?? new Date().toISOString()
+  return {
+    id: `${input.code}:${input.traceId ?? 'no-trace'}:${at}`,
+    at,
+    message: input.message,
+    code: input.code,
+    phase: input.phase,
+    severity: 'error',
+    sectionSerial: input.sectionSerial ?? null,
+    sceneSerial: input.sceneSerial ?? null,
+    location: input.location ?? null,
+    summary: input.summary ?? input.message,
+    details: input.details ?? null,
+    traceId: input.traceId ?? null
+  }
+}
+
+function runtimeErrorFromPayload(payload: Record<string, unknown>, at: string): RuntimeErrorEntry {
+  return buildRuntimeErrorEntry({
+    at,
+    code: typeof payload.code === 'string' ? payload.code : 'RUNTIME_EXCEPTION',
+    message: typeof payload.message === 'string' ? payload.message : 'Runtime error',
+    summary: typeof payload.summary === 'string' ? payload.summary : undefined,
+    phase: payload.phase === 'interaction' || payload.phase === 'restore' || payload.phase === 'startup' ? payload.phase : 'execution',
+    sectionSerial: typeof payload.sectionSerial === 'number' ? payload.sectionSerial : null,
+    sceneSerial: typeof payload.sceneSerial === 'number' ? payload.sceneSerial : null,
+    location: normalizeRuntimeErrorLocation(payload.location),
+    details: payload.details ?? payload,
+    traceId: typeof payload.traceId === 'string' ? payload.traceId : null
+  })
+}
+
+function runtimeErrorFromThrown(err: unknown, section: SectionIndexEntry | null): RuntimeErrorEntry {
+  const payload = typeof err === 'object' && err !== null ? err as Record<string, unknown> : null
+  const location = normalizeRuntimeErrorLocation(payload?.location)
+  const message = payload && typeof payload.message === 'string'
+    ? payload.message
+    : String((err as Error)?.message ?? err)
+  return buildRuntimeErrorEntry({
+    code: payload && typeof payload.code === 'string' ? payload.code : 'RUNTIME_START_FAILED',
+    message,
+    summary: message,
+    phase: 'startup',
+    sectionSerial: payload && typeof payload.sectionSerial === 'number' ? payload.sectionSerial : (section?.serial ?? null),
+    sceneSerial: payload && typeof payload.sceneSerial === 'number' ? payload.sceneSerial : null,
+    location,
+    details: payload?.details ?? payload ?? { raw: message },
+    traceId: payload && typeof payload.traceId === 'string' ? payload.traceId : null
+  })
+}
+
 export function PreviewPane(props: PreviewPaneProps): JSX.Element {
   const {
     manifest,
@@ -136,6 +226,7 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
     onTogglePreviewPin,
     playtestNonce,
     onRuntimeEvent,
+    onRuntimeError,
     onRuntimeDebugSnapshot
   } = props
   const previewRef = useRef<HTMLDivElement | null>(null)
@@ -147,6 +238,7 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
     focusedSection,
     variableOverrideText,
     onRuntimeEvent,
+    onRuntimeError,
     onRuntimeDebugSnapshot
   })
   const [status, setStatus] = useState('idle')
@@ -188,9 +280,10 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
       focusedSection,
       variableOverrideText,
       onRuntimeEvent,
+      onRuntimeError,
       onRuntimeDebugSnapshot
     }
-  }, [focusedSection, manifest, onRuntimeDebugSnapshot, onRuntimeEvent, parseStatus, snapshot, variableOverrideText])
+  }, [focusedSection, manifest, onRuntimeDebugSnapshot, onRuntimeError, onRuntimeEvent, parseStatus, snapshot, variableOverrideText])
 
   useEffect(() => {
     if (!selectedPresetId && variablePresets[0]) {
@@ -272,6 +365,9 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
               summary: summaryForEvent(eventName, payload),
               payload
             })
+            if (eventName === 'error_raised' && isRuntimeExceptionPayload(payload)) {
+              current.onRuntimeError(runtimeErrorFromPayload(payload, new Date().toISOString()))
+            }
             if (typeof runtime.getDebugSnapshot === 'function') {
               current.onRuntimeDebugSnapshot(runtime.getDebugSnapshot())
             }
@@ -292,6 +388,7 @@ export function PreviewPane(props: PreviewPaneProps): JSX.Element {
         if (cancelled) return
         setStatus('error')
         setMessage(String((err as Error)?.message ?? err))
+        latestRef.current.onRuntimeError(runtimeErrorFromThrown(err, latestRef.current.focusedSection))
         latestRef.current.onRuntimeDebugSnapshot(null)
       }
     }

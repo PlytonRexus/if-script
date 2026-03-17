@@ -1,34 +1,70 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const runtimeHandlers = new Map<string, (payload: unknown) => void>()
+const mockCreateRuntime = vi.fn()
+const mockParse = vi.fn()
+const mockInit = vi.fn()
 
 vi.mock('if-script-core', () => {
   class MockIFScript {
-    async init(): Promise<void> {}
-    async parse(): Promise<Record<string, unknown>> {
-      return {}
+    async init(): Promise<void> {
+      await mockInit()
     }
+
+    async parse(): Promise<Record<string, unknown>> {
+      return mockParse()
+    }
+
     async createRuntime(): Promise<{
-      on: () => void
+      on: (eventName: string, handler: (payload: unknown) => void) => void
       mount: () => void
       start: () => void
       destroy: () => void
+      getDebugSnapshot: () => null
     }> {
-      return {
-        on: () => {},
-        mount: () => {},
-        start: () => {},
-        destroy: () => {}
-      }
+      return mockCreateRuntime()
     }
   }
+
   return { default: MockIFScript }
 })
 
 import { PreviewPane } from '../components/PreviewPane'
-import type { VariableCatalogEntry } from '../types/interfaces'
+import type { RuntimeErrorEntry, VariableCatalogEntry } from '../types/interfaces'
+
+function makeRuntime() {
+  runtimeHandlers.clear()
+  return {
+    on: (eventName: string, handler: (payload: unknown) => void) => {
+      runtimeHandlers.set(eventName, handler)
+    },
+    mount: () => {},
+    start: () => {},
+    destroy: () => {},
+    getDebugSnapshot: () => null
+  }
+}
+
+async function flushPreviewStartup(): Promise<void> {
+  await act(async () => {
+    await vi.runAllTimersAsync()
+  })
+}
 
 afterEach(() => {
   cleanup()
+  runtimeHandlers.clear()
+  vi.useRealTimers()
+})
+
+beforeEach(() => {
+  mockInit.mockReset()
+  mockInit.mockResolvedValue(undefined)
+  mockParse.mockReset()
+  mockParse.mockResolvedValue({})
+  mockCreateRuntime.mockReset()
+  mockCreateRuntime.mockResolvedValue(makeRuntime())
 })
 
 function renderPreviewPane(input?: {
@@ -37,6 +73,8 @@ function renderPreviewPane(input?: {
   variableOverrideText?: string
   onVariableOverrideTextChange?: (next: string) => void
   onPreviewAutoFollowChange?: (next: boolean) => void
+  parseStatus?: 'idle' | 'running' | 'error' | 'ok'
+  onRuntimeError?: (entry: RuntimeErrorEntry) => void
 }): void {
   const variableCatalog = input?.variableCatalog ?? []
   render(
@@ -51,7 +89,7 @@ function renderPreviewPane(input?: {
         storageMode: 'local-only'
       }}
       snapshot={{ '/workspace/main.if': 'section "One"\nend\n' }}
-      parseStatus="error"
+      parseStatus={input?.parseStatus ?? 'error'}
       focusedSection={{ serial: 3, title: 'One', file: '/workspace/main.if', line: 3, col: 1 }}
       variableCatalog={variableCatalog}
       sectionVariableNamesBySerial={input?.sectionVariableNamesBySerial ?? { 3: [] }}
@@ -65,8 +103,9 @@ function renderPreviewPane(input?: {
       onPreviewAutoFollowChange={input?.onPreviewAutoFollowChange ?? (() => {})}
       previewPinned={false}
       onTogglePreviewPin={() => {}}
-      playtestNonce={0}
+      playtestNonce={1}
       onRuntimeEvent={() => {}}
+      onRuntimeError={input?.onRuntimeError ?? (() => {})}
       onRuntimeDebugSnapshot={() => {}}
     />
   )
@@ -144,5 +183,79 @@ describe('PreviewPane', () => {
     expect(screen.getByText('number')).toBeTruthy()
     expect(screen.queryByRole('spinbutton')).toBeNull()
     expect(screen.getByDisplayValue('""')).toBeTruthy()
+  })
+
+  it('forwards structured exception runtime errors', async () => {
+    vi.useFakeTimers()
+    const onRuntimeError = vi.fn()
+    renderPreviewPane({
+      parseStatus: 'ok',
+      onRuntimeError
+    })
+
+    await flushPreviewStartup()
+
+    const handler = runtimeHandlers.get('error_raised')
+    expect(handler).toBeTypeOf('function')
+    act(() => {
+      handler?.({
+        kind: 'exception',
+        severity: 'error',
+        code: 'RUNTIME_EXCEPTION',
+        message: 'Undefined function: boom',
+        phase: 'execution',
+        sectionSerial: 3,
+        location: { file: '/workspace/main.if', line: 7, col: 3 }
+      })
+    })
+
+    expect(onRuntimeError).toHaveBeenCalledWith(expect.objectContaining({
+      code: 'RUNTIME_EXCEPTION',
+      message: 'Undefined function: boom',
+      phase: 'execution',
+      sectionSerial: 3
+    }))
+  })
+
+  it('ignores validation runtime errors for the error feed', async () => {
+    vi.useFakeTimers()
+    const onRuntimeError = vi.fn()
+    renderPreviewPane({
+      parseStatus: 'ok',
+      onRuntimeError
+    })
+
+    await flushPreviewStartup()
+
+    act(() => {
+      runtimeHandlers.get('error_raised')?.({
+        kind: 'validation',
+        severity: 'error',
+        code: 'INPUT_REQUIRED',
+        message: 'Input choice requires a non-empty value.',
+        phase: 'interaction'
+      })
+    })
+
+    expect(onRuntimeError).not.toHaveBeenCalled()
+  })
+
+  it('captures startup failures as runtime errors', async () => {
+    vi.useFakeTimers()
+    mockCreateRuntime.mockRejectedValueOnce(new Error('boot failed'))
+    const onRuntimeError = vi.fn()
+    renderPreviewPane({
+      parseStatus: 'ok',
+      onRuntimeError
+    })
+
+    await flushPreviewStartup()
+
+    expect(onRuntimeError).toHaveBeenCalledWith(expect.objectContaining({
+      code: 'RUNTIME_START_FAILED',
+      message: 'boot failed',
+      phase: 'startup',
+      sectionSerial: 3
+    }))
   })
 })
