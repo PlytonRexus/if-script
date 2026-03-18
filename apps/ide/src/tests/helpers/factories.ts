@@ -1,4 +1,5 @@
 import type {
+  AuthorGraphNode,
   ChoiceIndexEntry,
   CommandPaletteItem,
   IdeDiagnostic,
@@ -6,9 +7,14 @@ import type {
   RuntimeErrorEntry,
   RuntimeEventEntry,
   SceneIndexEntry,
+  SectionContentIndexEntry,
   SectionIndexEntry,
   SectionSettingsIndexEntry,
+  StoryGraph,
+  StoryGraphEdge,
+  StoryGraphNode,
   StorySettingsIndexEntry,
+  VariableCatalogEntry,
   WorkspaceFile,
   WorkspaceManifest
 } from '../../types/interfaces'
@@ -191,6 +197,82 @@ export function makeWorkspaceFile(overrides?: Partial<WorkspaceFile>): Workspace
     dirty: false,
     version: 1,
     lastSavedAt: null,
+    ...overrides
+  }
+}
+
+export function makeStoryGraph(overrides?: Partial<StoryGraph>): StoryGraph {
+  return {
+    nodes: [],
+    edges: [],
+    startNodeId: null,
+    deadEnds: [],
+    ...overrides
+  }
+}
+
+export function makeStoryGraphNode(overrides?: Partial<StoryGraphNode>): StoryGraphNode {
+  return {
+    id: overrides?.id ?? nextId(),
+    label: 'Test Node',
+    nodeType: 'section',
+    ending: false,
+    unreachable: false,
+    hasError: false,
+    ...overrides
+  }
+}
+
+export function makeStoryGraphEdge(overrides?: Partial<StoryGraphEdge>): StoryGraphEdge {
+  return {
+    from: 'n1',
+    to: 'n2',
+    targetType: 'section',
+    conditional: false,
+    unresolved: false,
+    ...overrides
+  }
+}
+
+export function makeAuthorGraphNode(overrides?: Partial<AuthorGraphNode>): AuthorGraphNode {
+  return {
+    id: overrides?.id ?? nextId(),
+    kind: 'section',
+    label: 'Test Node',
+    file: '/workspace/main.if',
+    sectionSerial: 1,
+    sceneSerial: null,
+    sourceRange: null,
+    unreachable: false,
+    hasError: false,
+    affordances: {
+      hasTimer: false,
+      hasAmbience: false,
+      hasBackdrop: false,
+      hasSfx: false,
+      hasConditionalChoices: false
+    },
+    ...overrides
+  }
+}
+
+export function makeSectionContentIndex(overrides?: Partial<SectionContentIndexEntry>): SectionContentIndexEntry {
+  return {
+    sectionSerial: 1,
+    file: '/workspace/main.if',
+    blocks: [],
+    supported: true,
+    unsupportedNodeKinds: [],
+    ...overrides
+  }
+}
+
+export function makeVariableCatalogEntry(overrides?: Partial<VariableCatalogEntry>): VariableCatalogEntry {
+  return {
+    name: 'testVar',
+    inferredType: 'number',
+    inferredTypes: ['number'],
+    defaultValue: 0,
     ...overrides
   }
 }

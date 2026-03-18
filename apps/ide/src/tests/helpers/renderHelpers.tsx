@@ -4,7 +4,28 @@ import { TopBar } from '../../components/TopBar'
 import { DiagnosticsPanel } from '../../components/DiagnosticsPanel'
 import { RuntimeEventsPanel } from '../../components/RuntimeEventsPanel'
 import { CommandPalette } from '../../components/CommandPalette'
-import type { PanelId, CommandPaletteMode, CommandPaletteItem, IdeDiagnostic, RuntimeEventEntry } from '../../types/interfaces'
+import { StoryboardPane } from '../../components/StoryboardPane'
+import { GraphPane } from '../../components/GraphPane'
+import { GraphSectionWriterPane } from '../../components/GraphSectionWriterPane'
+import { InspectorPane } from '../../components/InspectorPane'
+import type {
+  AdvancedInspectorSelection,
+  AuthorGraphNode,
+  AuthoringSchema,
+  ChoiceIndexEntry,
+  CommandPaletteItem,
+  CommandPaletteMode,
+  IdeDiagnostic,
+  PanelId,
+  RuntimeEventEntry,
+  SceneIndexEntry,
+  SectionContentIndexEntry,
+  SectionIndexEntry,
+  SectionSettingsIndexEntry,
+  SectionWriterInput,
+  StoryGraph,
+  StorySettingsIndexEntry
+} from '../../types/interfaces'
 
 interface TopBarOverrides {
   projectName?: string
@@ -102,6 +123,105 @@ export function renderCommandPalette(overrides: CommandPaletteOverrides = {}) {
       mode={overrides.mode ?? 'all'}
       items={overrides.items ?? []}
       onClose={overrides.onClose ?? vi.fn()}
+    />
+  )
+}
+
+interface StoryboardPaneOverrides {
+  sectionIndex?: SectionIndexEntry[]
+  sceneIndex?: SceneIndexEntry[]
+  graph?: StoryGraph
+  onOpenSection?: (section: SectionIndexEntry) => void
+  onOpenScene?: (scene: SceneIndexEntry) => void
+}
+
+export function renderStoryboardPane(overrides: StoryboardPaneOverrides = {}) {
+  return render(
+    <StoryboardPane
+      sectionIndex={overrides.sectionIndex ?? []}
+      sceneIndex={overrides.sceneIndex ?? []}
+      graph={overrides.graph ?? { nodes: [], edges: [], startNodeId: null, deadEnds: [] }}
+      onOpenSection={overrides.onOpenSection ?? vi.fn()}
+      onOpenScene={overrides.onOpenScene ?? vi.fn()}
+    />
+  )
+}
+
+interface GraphPaneOverrides {
+  graph?: StoryGraph
+  focusedNodeId?: string | null
+  onOpenNode?: (nodeId: string) => void
+}
+
+export function renderGraphPane(overrides: GraphPaneOverrides = {}) {
+  return render(
+    <GraphPane
+      graph={overrides.graph ?? { nodes: [], edges: [], startNodeId: null, deadEnds: [] }}
+      focusedNodeId={overrides.focusedNodeId ?? null}
+      onOpenNode={overrides.onOpenNode ?? vi.fn()}
+    />
+  )
+}
+
+interface GraphSectionWriterPaneOverrides {
+  section?: SectionSettingsIndexEntry | null
+  sectionContent?: SectionContentIndexEntry | null
+  selectedNode?: AuthorGraphNode | null
+  selectedGroupLabel?: string | null
+  selectedChoices?: ChoiceIndexEntry[]
+  unsupportedReason?: string | null
+  onApply?: (input: SectionWriterInput) => void
+  onDeleteSection?: () => void
+  onOpenSource?: () => void
+}
+
+export function renderGraphSectionWriterPane(overrides: GraphSectionWriterPaneOverrides = {}) {
+  return render(
+    <GraphSectionWriterPane
+      section={overrides.section ?? null}
+      sectionContent={overrides.sectionContent ?? null}
+      selectedNode={overrides.selectedNode ?? null}
+      selectedGroupLabel={overrides.selectedGroupLabel ?? null}
+      selectedChoices={overrides.selectedChoices ?? []}
+      unsupportedReason={overrides.unsupportedReason ?? null}
+      onApply={overrides.onApply ?? vi.fn()}
+      onDeleteSection={overrides.onDeleteSection ?? vi.fn()}
+      onOpenSource={overrides.onOpenSource ?? vi.fn()}
+    />
+  )
+}
+
+interface InspectorPaneOverrides {
+  snapshot?: Record<string, string>
+  selection?: Partial<AdvancedInspectorSelection>
+  storySettingsIndex?: StorySettingsIndexEntry | null
+  sceneIndex?: SceneIndexEntry[]
+  sectionSettingsIndex?: SectionSettingsIndexEntry[]
+  choiceIndex?: ChoiceIndexEntry[]
+  authoringSchema?: AuthoringSchema | null
+  onSelectionChange?: (next: AdvancedInspectorSelection) => void
+  onWriteFile?: (file: string, nextContent: string) => void
+}
+
+export function renderInspectorPane(overrides: InspectorPaneOverrides = {}) {
+  const selection: AdvancedInspectorSelection = {
+    activeTab: 'section',
+    sceneSerial: null,
+    sectionSerial: 1,
+    choiceId: null,
+    ...overrides.selection
+  }
+  return render(
+    <InspectorPane
+      snapshot={overrides.snapshot ?? { '/workspace/main.if': 'section "Intro"\nend\n' }}
+      selection={selection}
+      storySettingsIndex={overrides.storySettingsIndex ?? null}
+      sceneIndex={overrides.sceneIndex ?? []}
+      sectionSettingsIndex={overrides.sectionSettingsIndex ?? []}
+      choiceIndex={overrides.choiceIndex ?? []}
+      authoringSchema={overrides.authoringSchema ?? null}
+      onSelectionChange={overrides.onSelectionChange ?? vi.fn()}
+      onWriteFile={overrides.onWriteFile ?? vi.fn()}
     />
   )
 }
