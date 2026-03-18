@@ -306,7 +306,7 @@ export function GraphSectionWriterPane(props: GraphSectionWriterPaneProps): JSX.
               {block.kind === 'text' ? (
                 <textarea
                   value={block.text}
-                  onChange={(event) => setBlocks(state => state.map(entry => entry.id === block.id ? { ...entry, text: event.currentTarget.value } : entry))}
+                  onChange={(event) => { const value = event.target.value; setBlocks(state => state.map(entry => entry.id === block.id ? { ...entry, text: value } : entry)) }}
                   rows={5}
                 />
               ) : null}
@@ -315,7 +315,7 @@ export function GraphSectionWriterPane(props: GraphSectionWriterPaneProps): JSX.
                   Choice block
                   <select
                     value={block.choiceId}
-                    onChange={(event) => setBlocks(state => state.map(entry => entry.id === block.id ? { ...entry, choiceId: event.currentTarget.value } : entry))}
+                    onChange={(event) => { const value = event.target.value; setBlocks(state => state.map(entry => entry.id === block.id ? { ...entry, choiceId: value } : entry)) }}
                   >
                     {choices.map(choice => (
                       <option key={choice.id} value={choice.id}>{choice.text || 'Untitled choice'}</option>
@@ -329,7 +329,7 @@ export function GraphSectionWriterPane(props: GraphSectionWriterPaneProps): JSX.
                     If
                     <input
                       value={block.condition}
-                      onChange={(event) => setBlocks(state => updateBlockTree(state, block.id, entry => entry.kind === 'conditional' ? { ...entry, condition: event.currentTarget.value } : entry))}
+                      onChange={(event) => { const value = event.target.value; setBlocks(state => updateBlockTree(state, block.id, entry => entry.kind === 'conditional' ? { ...entry, condition: value } : entry)) }}
                     />
                   </label>
                   <BranchEditor
@@ -355,28 +355,28 @@ export function GraphSectionWriterPane(props: GraphSectionWriterPaneProps): JSX.
                     if (!choice) return <p className="empty-message">Choice missing.</p>
                     return (
                       <>
-                        <label>Text<input value={choice.text} onChange={(event) => setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, text: event.currentTarget.value } : entry))} /></label>
+                        <label>Text<input value={choice.text} onChange={(event) => { const value = event.target.value; setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, text: value } : entry)) }} /></label>
                         <label>Target Type
-                          <select value={choice.targetType} onChange={(event) => setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, targetType: event.currentTarget.value as WriterChoiceInput['targetType'] } : entry))}>
+                          <select value={choice.targetType} onChange={(event) => { const value = event.target.value as WriterChoiceInput['targetType']; setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, targetType: value } : entry)) }}>
                             <option value="section">section</option>
                             <option value="scene">scene</option>
                           </select>
                         </label>
-                        <label>Target<input value={choice.target} onChange={(event) => setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, target: event.currentTarget.value } : entry))} /></label>
-                        <label>When<input value={choice.when} onChange={(event) => setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, when: event.currentTarget.value } : entry))} /></label>
-                        <label>Disabled Text<input value={choice.disabledText} onChange={(event) => setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, disabledText: event.currentTarget.value } : entry))} /></label>
-                        <label>Actions<textarea value={choice.actionsText} onChange={(event) => setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, actionsText: event.currentTarget.value } : entry))} rows={3} /></label>
-                        <label>Choice SFX<input value={choice.choiceSfx} onChange={(event) => setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, choiceSfx: event.currentTarget.value } : entry))} /></label>
-                        <label>Focus SFX<input value={choice.focusSfx} onChange={(event) => setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, focusSfx: event.currentTarget.value } : entry))} /></label>
+                        <label>Target<input value={choice.target} onChange={(event) => { const value = event.target.value; setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, target: value } : entry)) }} /></label>
+                        <label>When<input value={choice.when} onChange={(event) => { const value = event.target.value; setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, when: value } : entry)) }} /></label>
+                        <label>Disabled Text<input value={choice.disabledText} onChange={(event) => { const value = event.target.value; setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, disabledText: value } : entry)) }} /></label>
+                        <label>Actions<textarea value={choice.actionsText} onChange={(event) => { const value = event.target.value; setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, actionsText: value } : entry)) }} rows={3} /></label>
+                        <label>Choice SFX<input value={choice.choiceSfx} onChange={(event) => { const value = event.target.value; setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, choiceSfx: value } : entry)) }} /></label>
+                        <label>Focus SFX<input value={choice.focusSfx} onChange={(event) => { const value = event.target.value; setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, focusSfx: value } : entry)) }} /></label>
                         <label>Style
-                          <select value={choice.choiceStyle} onChange={(event) => setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, choiceStyle: event.currentTarget.value as WriterChoiceInput['choiceStyle'] } : entry))}>
+                          <select value={choice.choiceStyle} onChange={(event) => { const value = event.target.value as WriterChoiceInput['choiceStyle']; setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, choiceStyle: value } : entry)) }}>
                             <option value="default">default</option>
                             <option value="primary">primary</option>
                             <option value="subtle">subtle</option>
                             <option value="danger">danger</option>
                           </select>
                         </label>
-                        <label className="preview-follow-toggle"><input type="checkbox" checked={choice.once} onChange={(event) => setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, once: event.currentTarget.checked } : entry))} />Once</label>
+                        <label className="preview-follow-toggle"><input type="checkbox" checked={choice.once} onChange={(event) => { const checked = event.target.checked; setChoices(state => state.map(entry => entry.id === choice.id ? { ...entry, once: checked } : entry)) }} />Once</label>
                       </>
                     )
                   })()}
@@ -395,16 +395,16 @@ export function GraphSectionWriterPane(props: GraphSectionWriterPaneProps): JSX.
           </div>
           {settingsOpen ? (
             <div className="writer-settings-grid">
-              <label>Timer Seconds<input value={settings.timerSeconds} onChange={(event) => setSettings(state => ({ ...state, timerSeconds: event.currentTarget.value }))} /></label>
-              <label>Timer Target<input value={settings.timerTarget} onChange={(event) => setSettings(state => ({ ...state, timerTarget: event.currentTarget.value }))} /></label>
-              <label>Timer Outcome<input value={settings.timerOutcome} onChange={(event) => setSettings(state => ({ ...state, timerOutcome: event.currentTarget.value }))} /></label>
-              <label>Ambience<input value={settings.ambience} onChange={(event) => setSettings(state => ({ ...state, ambience: event.currentTarget.value }))} /></label>
-              <label>Ambience Volume<input value={settings.ambienceVolume} onChange={(event) => setSettings(state => ({ ...state, ambienceVolume: event.currentTarget.value }))} /></label>
-              <label className="preview-follow-toggle"><input type="checkbox" checked={settings.ambienceLoop} onChange={(event) => setSettings(state => ({ ...state, ambienceLoop: event.currentTarget.checked }))} />Loop ambience</label>
-              <label>SFX<input value={settings.sfxCsv} onChange={(event) => setSettings(state => ({ ...state, sfxCsv: event.currentTarget.value }))} /></label>
-              <label>Backdrop<input value={settings.backdrop} onChange={(event) => setSettings(state => ({ ...state, backdrop: event.currentTarget.value }))} /></label>
+              <label>Timer Seconds<input value={settings.timerSeconds} onChange={(event) => { const value = event.target.value; setSettings(state => ({ ...state, timerSeconds: value })) }} /></label>
+              <label>Timer Target<input value={settings.timerTarget} onChange={(event) => { const value = event.target.value; setSettings(state => ({ ...state, timerTarget: value })) }} /></label>
+              <label>Timer Outcome<input value={settings.timerOutcome} onChange={(event) => { const value = event.target.value; setSettings(state => ({ ...state, timerOutcome: value })) }} /></label>
+              <label>Ambience<input value={settings.ambience} onChange={(event) => { const value = event.target.value; setSettings(state => ({ ...state, ambience: value })) }} /></label>
+              <label>Ambience Volume<input value={settings.ambienceVolume} onChange={(event) => { const value = event.target.value; setSettings(state => ({ ...state, ambienceVolume: value })) }} /></label>
+              <label className="preview-follow-toggle"><input type="checkbox" checked={settings.ambienceLoop} onChange={(event) => { const checked = event.target.checked; setSettings(state => ({ ...state, ambienceLoop: checked })) }} />Loop ambience</label>
+              <label>SFX<input value={settings.sfxCsv} onChange={(event) => { const value = event.target.value; setSettings(state => ({ ...state, sfxCsv: value })) }} /></label>
+              <label>Backdrop<input value={settings.backdrop} onChange={(event) => { const value = event.target.value; setSettings(state => ({ ...state, backdrop: value })) }} /></label>
               <label>Shot
-                <select value={settings.shot} onChange={(event) => setSettings(state => ({ ...state, shot: event.currentTarget.value as SectionWriterInput['settings']['shot'] }))}>
+                <select value={settings.shot} onChange={(event) => { const value = event.target.value as SectionWriterInput['settings']['shot']; setSettings(state => ({ ...state, shot: value })) }}>
                   <option value="wide">wide</option>
                   <option value="medium">medium</option>
                   <option value="close">close</option>
@@ -412,7 +412,7 @@ export function GraphSectionWriterPane(props: GraphSectionWriterPaneProps): JSX.
                 </select>
               </label>
               <label>Text Pacing
-                <select value={settings.textPacing} onChange={(event) => setSettings(state => ({ ...state, textPacing: event.currentTarget.value as SectionWriterInput['settings']['textPacing'] }))}>
+                <select value={settings.textPacing} onChange={(event) => { const value = event.target.value as SectionWriterInput['settings']['textPacing']; setSettings(state => ({ ...state, textPacing: value })) }}>
                   <option value="instant">instant</option>
                   <option value="typed">typed</option>
                   <option value="cinematic">cinematic</option>
