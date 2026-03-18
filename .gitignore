@@ -45,3 +45,13 @@ yarn-error.log*
 *.flowconfig
 *.je-project-settings
 *.sublime-workspace
+
+.idea/**
+
+# ide vnext
+apps/ide/node_modules/
+apps/ide/dist/
+apps/ide/.vite/
+apps/ide/playwright-report/
+apps/ide/test-results/
+apps/ide/coverage/

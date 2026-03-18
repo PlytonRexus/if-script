@@ -1,68 +1,24 @@
 {
   "name": "if-script",
-  "version": "0.2.2",
-  "description": "An extremely simple syntax for writing interactive fiction that can be embedded in any website.",
-  "main": "index.js",
-  "scripts": {
-    "test": "standard",
-    "serve": "serve -s dist -l 3001",
-    "compile": "npm run compile:section npm run compile:scene && npm run compile:settings",
-    "compile:section": "nearleyc src/grammar/section.ne -o dist/grammar/section.grammar.js",
-    "compile:scene": "nearleyc src/grammar/scene.ne -o dist/grammar/scene.grammar.js",
-    "compile:settings": "nearleyc src/grammar/settings.ne -o dist/grammar/settings.grammar.js",
-    "build": "cross-env NODE_ENV=production webpack --config config/webpack.prod.js",
-    "build:gh": "cross-env NODE_ENV=production webpack --config config/webpack.gh.js",
-    "start": "cross-env NODE_ENV=development webpack serve --config config/webpack.dev.js",
-    "fix": "standard --fix",
-    "deploy": "npm run build:gh && git add dist/** && git commit -m \"deploy commit\" && git subtree push --prefix dist origin gh-pages"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/PlytonRexus/if-script.git"
-  },
-  "keywords": [
-    "syntax",
-    "embedded",
-    "interactive-fiction",
-    "text-adventure-game",
-    "scenes",
-    "timers",
-    "choice-syntax"
+  "version": "0.6.1-ide-next",
+  "private": true,
+  "description": "IF-Script IDE vNext workspace",
+  "workspaces": [
+    "apps/ide"
   ],
-  "author": "Mihir Jichkar (PlytonRexus)",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/PlytonRexus/if-script/issues"
+  "scripts": {
+    "dev": "npm --workspace apps/ide run dev",
+    "build": "npm --workspace apps/ide run build",
+    "test": "npm --workspace apps/ide run test",
+    "test:e2e": "npm --workspace apps/ide run test:e2e",
+    "lint": "npm --workspace apps/ide run lint",
+    "typecheck": "npm --workspace apps/ide run typecheck",
+    "link:core": "npm link ../if-script-core",
+    "unlink:core": "npm unlink if-script-core && npm install",
+    "prepare": "cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"
   },
-  "homepage": "https://github.com/PlytonRexus/if-script#readme",
-  "dependencies": {
-    "if-script-core": "^0.5.7"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.14.3",
-    "@babel/plugin-proposal-class-properties": "^7.13.0",
-    "@babel/preset-env": "^7.14.2",
-    "babel-loader": "^8.2.2",
-    "clean-webpack-plugin": "^4.0.0-alpha.0",
-    "cross-env": "^7.0.3",
-    "css-loader": "^5.2.6",
-    "css-minimizer-webpack-plugin": "^3.0.0",
-    "html-webpack-plugin": "^5.3.1",
-    "mini-css-extract-plugin": "^1.6.0",
-    "prettier-config-standard": "^4.0.0",
-    "serve": "^11.3.2",
-    "standard": "^16.0.3",
-    "style-loader": "^2.0.0",
-    "webpack": "^5.37.1",
-    "webpack-cli": "^4.7.0",
-    "webpack-dev-server": "^3.11.2",
-    "webpack-merge": "^5.8.0"
-  },
-  "standard": {
-    "ignore": [
-      "src/web/assets/**",
-      "src/web/js/lib/**",
-      "dist/**"
-    ]
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10.9.0"
   }
 }

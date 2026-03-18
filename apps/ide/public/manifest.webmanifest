@@ -1,0 +1,16 @@
+{
+  "name": "IF-Script IDE",
+  "short_name": "IF IDE",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f1f2f",
+  "theme_color": "#122236",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
