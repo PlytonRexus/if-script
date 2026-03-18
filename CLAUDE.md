@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-IF-Script is an interactive fiction authoring tool with a custom syntax that parses stories into HTML/CSS/JavaScript. This repository contains the web-based editor and development environment. The core parsing and interpretation logic is in the separate `if-script-core` npm package (v0.5.7+).
+IF-Script is an interactive fiction authoring tool with a custom syntax that parses stories into HTML/CSS/JavaScript. This repository contains the web-based editor and development environment. The core parsing and interpretation logic is in the separate `if-script-core` npm package (v0.6.1+).
 
 **Important**: The IF-Script syntax has been completely rewritten. The current implementation uses a custom stream-based parser (not NearleyJS), with a new double-underscore delimiter syntax.
 
@@ -41,7 +41,7 @@ npm run compile        # Compile all grammars
 
 ## IF-Script Syntax (Current Implementation)
 
-The current syntax (v0.5.7+) uses **double-underscore delimiters** and JavaScript-like expressions:
+The current syntax (v0.6.1+) uses **double-underscore delimiters** and JavaScript-like expressions:
 
 ### Story Settings
 ```
@@ -162,7 +162,17 @@ Configurations:
 
 ### Working with IF-Script Core
 
-The `if-script-core` package has its own repository and can be developed separately:
+The `if-script-core` package is consumed from the npm registry (`^0.6.1`). Only `apps/ide/package.json` declares the dependency; the root `package.json` is a workspace orchestrator with no direct dependency on it.
+
+For local cross-repo development, link and unlink with convenience scripts:
+```bash
+npm run link:core      # symlinks node_modules/if-script-core -> ../if-script-core
+npm run unlink:core    # restores registry resolution, run before committing
+```
+
+A pre-commit hook (`scripts/pre-commit.sh`, installed automatically via the `prepare` script) rejects commits if `package-lock.json` still references `../if-script-core`.
+
+The core package has its own repository and can be developed separately:
 ```bash
 git clone https://github.com/PlytonRexus/if-script-core.git
 cd if-script-core
@@ -235,8 +245,8 @@ The introduction example from `src/web/js/globals.js` may still use old syntax a
 2. Update models if needed (Story, Section, Choice, etc.)
 3. Update interpreter to handle new features
 4. Add examples to test suite
-5. Bump `if-script-core` version
-6. Update dependency in this repo's package.json
+5. Bump and publish `if-script-core` version
+6. Update the dependency version in `apps/ide/package.json` and run `npm install`
 
 ### Updating the Web UI
 1. Main UI logic is in `src/web/js/index.js`

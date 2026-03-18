@@ -12,10 +12,10 @@
     "test": "npm --workspace apps/ide run test",
     "test:e2e": "npm --workspace apps/ide run test:e2e",
     "lint": "npm --workspace apps/ide run lint",
-    "typecheck": "npm --workspace apps/ide run typecheck"
-  },
-  "dependencies": {
-    "if-script-core": "^0.6.1"
+    "typecheck": "npm --workspace apps/ide run typecheck",
+    "link:core": "npm link ../if-script-core",
+    "unlink:core": "npm unlink if-script-core && npm install",
+    "prepare": "cp scripts/pre-commit.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit"
   },
   "engines": {
     "node": ">=22.12.0",
