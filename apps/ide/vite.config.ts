@@ -14,7 +14,7 @@ export default defineConfig({
       }
     ]
   },
-  base: './',
+  base: process.env.GITHUB_PAGES ? '/if-script/' : './',
   worker: {
     format: 'es'
   },
