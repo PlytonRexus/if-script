@@ -90,7 +90,7 @@ describe('buildAuthorGraph', () => {
 
     expect(graph.groups).toHaveLength(1)
     expect(graph.groups[0]?.label).toBe('Act One')
-    expect(graph.groups[0]?.colorToken).toBe('graph-group-slate')
+    expect(graph.groups[0]?.colorToken).toBe('graph-group-sky')
 
     const prologue = graph.nodes.find(node => node.sectionSerial === 1)
     expect(prologue?.hasError).toBe(true)

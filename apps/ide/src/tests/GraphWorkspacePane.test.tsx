@@ -19,6 +19,8 @@ vi.mock('elkjs/lib/elk.bundled.js', () => ({
 
 vi.mock('@xyflow/react', () => ({
   Background: () => null,
+  BackgroundVariant: { Dots: 'dots', Lines: 'lines', Cross: 'cross' },
+  ConnectionLineType: { SmoothStep: 'smoothstep', Bezier: 'bezier', Step: 'step', Straight: 'straight' },
   Controls: () => null,
   Handle: () => null,
   MarkerType: { ArrowClosed: 'arrowclosed' },
