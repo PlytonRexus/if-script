@@ -9,9 +9,18 @@ import type {
   SectionSettingsIndexEntry
 } from '../types/interfaces'
 
+const GROUP_COLORS = [
+  'graph-group-amber', 'graph-group-sky', 'graph-group-mint',
+  'graph-group-rose', 'graph-group-gold', 'graph-group-coral',
+  'graph-group-sea', 'graph-group-slate'
+]
+
 function tokenForGroup(seed: string): string {
-  void seed
-  return 'graph-group-slate'
+  let hash = 0
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0
+  }
+  return GROUP_COLORS[Math.abs(hash) % GROUP_COLORS.length] ?? 'graph-group-slate'
 }
 
 function sectionKey(section: SectionIndexEntry): string {

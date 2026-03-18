@@ -3,6 +3,8 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'rea
 import ELK from 'elkjs/lib/elk.bundled.js'
 import {
   Background,
+  BackgroundVariant,
+  ConnectionLineType,
   Controls,
   Handle,
   MarkerType,
@@ -33,6 +35,7 @@ import type {
   WorkspaceFile
 } from '../types/interfaces'
 
+const elkInstance = new ELK()
 const GRAPH_MAX_RENDER_NODES = 200
 const GROUP_PADDING_X = 28
 const GROUP_PADDING_TOP = 52
@@ -125,7 +128,7 @@ function SectionGraphNode(props: NodeProps<Node<SectionNodeData>>): JSX.Element 
       </div>
       <div className="author-graph-choice-rail" aria-label="Outgoing choices">
         {data.outgoingChoices.length === 0 ? <span className="author-graph-choice-empty">No choices</span> : null}
-        {data.outgoingChoices.map((choice, idx) => (
+        {data.outgoingChoices.map((choice) => (
           <div key={choice.choiceId} className="author-graph-choice-chip">
             <span>{choice.label}</span>
             <Handle
@@ -133,7 +136,6 @@ function SectionGraphNode(props: NodeProps<Node<SectionNodeData>>): JSX.Element 
               position={Position.Right}
               id={choice.choiceId}
               className="author-graph-handle source"
-              style={{ top: 44 + idx * 18 }}
               aria-label={`Drag to retarget ${choice.label}`}
             />
           </div>
@@ -235,8 +237,7 @@ async function buildLayout(input: {
   edges: AuthorGraphEdge[]
   pinnedNodes: GraphLayoutState['pinnedNodes']
 }): Promise<{ groupFrames: Node<GroupNodeData>[], sectionNodes: Node<SectionNodeData>[] }> {
-  const elk = new ELK()
-  const layout = await elk.layout({
+  const layout = await elkInstance.layout({
     id: 'root',
     layoutOptions: {
       'elk.algorithm': 'layered',
@@ -344,8 +345,10 @@ async function buildLayout(input: {
 export function GraphWorkspacePane(props: GraphWorkspacePaneProps): JSX.Element {
   const [search, setSearch] = useState('')
   const [manualVisibleIds, setManualVisibleIds] = useState<string[]>([])
-  const [nodes, setNodes] = useState<Array<Node<SectionNodeData | GroupNodeData>>>([])
-  const [edges, setEdges] = useState<Edge[]>([])
+  const [layoutResult, setLayoutResult] = useState<{
+    groupFrames: Node<GroupNodeData>[]
+    sectionNodes: Node<SectionNodeData>[]
+  } | null>(null)
   const deferredSearch = useDeferredValue(search)
 
   const graphNodeById = useMemo(() => new Map(props.graph.nodes.map(node => [node.id, node])), [props.graph.nodes])
@@ -419,6 +422,7 @@ export function GraphWorkspacePane(props: GraphWorkspacePaneProps): JSX.Element 
   const highlightedEdgeIds = useMemo(() => edgeIdsForSelected(visibleEdges, selectedNodeId), [selectedNodeId, visibleEdges])
   const highlightedNodeIds = useMemo(() => neighborIdsForSelected(visibleEdges, selectedNodeId), [selectedNodeId, visibleEdges])
 
+  // Layout effect: only re-runs when graph structure changes, not on selection/highlight
   useEffect(() => {
     let cancelled = false
     void buildLayout({
@@ -426,80 +430,74 @@ export function GraphWorkspacePane(props: GraphWorkspacePaneProps): JSX.Element 
       nodes: visibleNodes,
       edges: visibleEdges,
       pinnedNodes: props.layoutState.pinnedNodes
-    }).then(layout => {
+    }).then(result => {
       if (cancelled) return
+      setLayoutResult(result)
+    })
+    return () => { cancelled = true }
+  }, [visibleNodes, visibleEdges, visibleGroups, props.layoutState.pinnedNodes])
 
-      const groupNodes = layout.groupFrames.map(node => {
-        const group = groupById.get(node.id)
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            colorToken: group?.colorToken ?? 'graph-group-slate',
-            onCreateSection: props.onCreateSection
-          }
-        } satisfies Node<GroupNodeData>
-      })
+  // Data enrichment: derives final nodes from stable layout positions + current selection state
+  const nodes = useMemo<Array<Node<SectionNodeData | GroupNodeData>>>(() => {
+    if (!layoutResult) return []
 
-      const sectionNodes = layout.sectionNodes.map(node => {
-        const graphNode = graphNodeById.get(node.id)
-        const outgoingChoices = graphNode?.sectionSerial
-          ? props.choiceIndex
-              .filter(choice => choice.ownerSectionSerial === graphNode.sectionSerial)
-              .map(choice => ({
-                choiceId: choice.id,
-                label: choice.textPreview || `Choice ${choice.choiceIndex}`
-              }))
-          : []
-        const group = visibleGroups.find(entry => entry.nodeIds.includes(node.id))
-        return {
-          ...node,
-          data: {
-            label: graphNode?.label ?? node.id,
-            colorToken: group?.colorToken ?? 'graph-group-slate',
-            badges: graphNode ? createBadges(graphNode) : [],
-            outgoingChoices,
-            selected: node.id === selectedNodeId,
-            dimmed: Boolean(selectedNodeId) && !highlightedNodeIds.has(node.id),
-            unresolved: graphNode?.kind === 'unresolved'
-          },
-          selected: node.id === selectedNodeId
-        } satisfies Node<SectionNodeData>
-      })
-
-      setNodes([...groupNodes, ...sectionNodes])
-      setEdges(visibleEdges.map(edge => ({
-        id: edge.id,
-        source: edge.fromNodeId,
-        sourceHandle: edge.choiceId ?? undefined,
-        target: edge.toNodeId,
-        markerEnd: { type: MarkerType.ArrowClosed },
-        className: [
-          'author-graph-edge',
-          edge.conditional ? 'is-conditional' : '',
-          edge.unresolved ? 'is-unresolved' : '',
-          highlightedEdgeIds.has(edge.id) ? 'is-highlighted' : ''
-        ].join(' ').trim()
-      })))
+    const groupNodes = layoutResult.groupFrames.map(node => {
+      const group = groupById.get(node.id)
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          colorToken: group?.colorToken ?? 'graph-group-slate',
+          onCreateSection: props.onCreateSection
+        }
+      } satisfies Node<GroupNodeData>
     })
 
-    return () => {
-      cancelled = true
-    }
-  }, [
-    graphNodeById,
-    groupById,
-    highlightedEdgeIds,
-    highlightedNodeIds,
-    props.choiceIndex,
-    props.layoutState,
-    props.onCreateSection,
-    props.onLayoutStateChange,
-    selectedNodeId,
-    visibleEdges,
-    visibleGroups,
-    visibleNodes
-  ])
+    const sectionNodes = layoutResult.sectionNodes.map(node => {
+      const graphNode = graphNodeById.get(node.id)
+      const outgoingChoices = graphNode?.sectionSerial
+        ? props.choiceIndex
+            .filter(choice => choice.ownerSectionSerial === graphNode.sectionSerial)
+            .map(choice => ({
+              choiceId: choice.id,
+              label: choice.textPreview || `Choice ${choice.choiceIndex}`
+            }))
+        : []
+      const group = visibleGroups.find(entry => entry.nodeIds.includes(node.id))
+      return {
+        ...node,
+        data: {
+          label: graphNode?.label ?? node.id,
+          colorToken: group?.colorToken ?? 'graph-group-slate',
+          badges: graphNode ? createBadges(graphNode) : [],
+          outgoingChoices,
+          selected: node.id === selectedNodeId,
+          dimmed: Boolean(selectedNodeId) && !highlightedNodeIds.has(node.id),
+          unresolved: graphNode?.kind === 'unresolved'
+        },
+        selected: node.id === selectedNodeId
+      } satisfies Node<SectionNodeData>
+    })
+
+    return [...groupNodes, ...sectionNodes]
+  }, [layoutResult, graphNodeById, groupById, highlightedNodeIds, props.choiceIndex, props.onCreateSection, selectedNodeId, visibleGroups])
+
+  const edges = useMemo<Edge[]>(() => {
+    return visibleEdges.map(edge => ({
+      id: edge.id,
+      type: 'smoothstep',
+      source: edge.fromNodeId,
+      sourceHandle: edge.choiceId ?? undefined,
+      target: edge.toNodeId,
+      markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+      className: [
+        'author-graph-edge',
+        edge.conditional ? 'is-conditional' : '',
+        edge.unresolved ? 'is-unresolved' : '',
+        highlightedEdgeIds.has(edge.id) ? 'is-highlighted' : ''
+      ].join(' ').trim()
+    }))
+  }, [visibleEdges, highlightedEdgeIds])
 
   const onConnect = useCallback<OnConnect>((connection) => {
     const targetNodeId = connection.target
@@ -683,9 +681,10 @@ export function GraphWorkspacePane(props: GraphWorkspacePaneProps): JSX.Element 
             onNodeDragStop={onNodeDragStop}
             nodesDraggable
             elementsSelectable
+            connectionLineType={ConnectionLineType.SmoothStep}
             proOptions={{ hideAttribution: true }}
           >
-            <Background gap={22} size={1} color="var(--border)" />
+            <Background variant={BackgroundVariant.Dots} gap={20} size={2} color="var(--border)" />
             <Controls showInteractive={false} />
           </ReactFlow>
           {visibleSelection.trimmed > 0 || props.graph.nodes.length > GRAPH_MAX_RENDER_NODES ? (
