@@ -4,7 +4,6 @@ import ELK from 'elkjs/lib/elk.bundled.js'
 import {
   Background,
   BackgroundVariant,
-  ConnectionLineType,
   Controls,
   Handle,
   MarkerType,
@@ -13,7 +12,6 @@ import {
   type Edge,
   type Node,
   type NodeProps,
-  type OnConnect,
   type OnNodeDrag,
   type Viewport
 } from '@xyflow/react'
@@ -42,7 +40,7 @@ const GROUP_PADDING_TOP = 52
 const GROUP_PADDING_BOTTOM = 20
 const GROUP_GAP_X = 60
 const SECTION_NODE_WIDTH = 220
-const SECTION_NODE_HEIGHT = 116
+const SECTION_NODE_HEIGHT = 96
 const GROUP_NODE_WIDTH = 300
 const MIN_GROUP_HEIGHT = 220
 
@@ -50,7 +48,7 @@ type SectionNodeData = {
   label: string
   colorToken: string
   badges: Array<{ key: string, icon: string, label: string }>
-  outgoingChoices: Array<{ choiceId: string, label: string }>
+  choiceCount: number
   selected: boolean
   dimmed: boolean
   unresolved: boolean
@@ -113,7 +111,7 @@ function SectionGraphNode(props: NodeProps<Node<SectionNodeData>>): JSX.Element 
         data.dimmed ? 'is-dimmed' : '',
         data.unresolved ? 'is-unresolved' : ''
       ].join(' ').trim()}
-      title={data.label}
+      title={`${data.label}\nClick to select \u00b7 Double-click for source`}
     >
       <Handle type="target" position={Position.Left} className="author-graph-handle target" aria-label={`Open ${data.label}`} />
       <header className="author-graph-node-header">
@@ -126,21 +124,15 @@ function SectionGraphNode(props: NodeProps<Node<SectionNodeData>>): JSX.Element 
           </span>
         ))}
       </div>
-      <div className="author-graph-choice-rail" aria-label="Outgoing choices">
-        {data.outgoingChoices.length === 0 ? <span className="author-graph-choice-empty">No choices</span> : null}
-        {data.outgoingChoices.map((choice) => (
-          <div key={choice.choiceId} className="author-graph-choice-chip">
-            <span>{choice.label}</span>
-            <Handle
-              type="source"
-              position={Position.Right}
-              id={choice.choiceId}
-              className="author-graph-handle source"
-              aria-label={`Drag to retarget ${choice.label}`}
-            />
-          </div>
-        ))}
+      <div className="author-graph-choice-summary">
+        {data.choiceCount === 0
+          ? <span className="author-graph-choice-empty">No choices</span>
+          : <span>{data.choiceCount} choice{data.choiceCount !== 1 ? 's' : ''}</span>
+        }
       </div>
+      {data.choiceCount > 0 ? (
+        <Handle type="source" position={Position.Right} className="author-graph-handle source" />
+      ) : null}
     </article>
   )
 }
@@ -455,14 +447,9 @@ export function GraphWorkspacePane(props: GraphWorkspacePaneProps): JSX.Element 
 
     const sectionNodes = layoutResult.sectionNodes.map(node => {
       const graphNode = graphNodeById.get(node.id)
-      const outgoingChoices = graphNode?.sectionSerial
-        ? props.choiceIndex
-            .filter(choice => choice.ownerSectionSerial === graphNode.sectionSerial)
-            .map(choice => ({
-              choiceId: choice.id,
-              label: choice.textPreview || `Choice ${choice.choiceIndex}`
-            }))
-        : []
+      const choiceCount = graphNode?.sectionSerial
+        ? props.choiceIndex.filter(choice => choice.ownerSectionSerial === graphNode.sectionSerial).length
+        : 0
       const group = visibleGroups.find(entry => entry.nodeIds.includes(node.id))
       return {
         ...node,
@@ -470,7 +457,7 @@ export function GraphWorkspacePane(props: GraphWorkspacePaneProps): JSX.Element 
           label: graphNode?.label ?? node.id,
           colorToken: group?.colorToken ?? 'graph-group-slate',
           badges: graphNode ? createBadges(graphNode) : [],
-          outgoingChoices,
+          choiceCount,
           selected: node.id === selectedNodeId,
           dimmed: Boolean(selectedNodeId) && !highlightedNodeIds.has(node.id),
           unresolved: graphNode?.kind === 'unresolved'
@@ -483,28 +470,53 @@ export function GraphWorkspacePane(props: GraphWorkspacePaneProps): JSX.Element 
   }, [layoutResult, graphNodeById, groupById, highlightedNodeIds, props.choiceIndex, props.onCreateSection, selectedNodeId, visibleGroups])
 
   const edges = useMemo<Edge[]>(() => {
-    return visibleEdges.map(edge => ({
-      id: edge.id,
-      type: 'smoothstep',
-      source: edge.fromNodeId,
-      sourceHandle: edge.choiceId ?? undefined,
-      target: edge.toNodeId,
-      markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-      className: [
-        'author-graph-edge',
-        edge.conditional ? 'is-conditional' : '',
-        edge.unresolved ? 'is-unresolved' : '',
-        highlightedEdgeIds.has(edge.id) ? 'is-highlighted' : ''
-      ].join(' ').trim()
-    }))
-  }, [visibleEdges, highlightedEdgeIds])
+    const pairMap = new Map<string, {
+      fromNodeId: string
+      toNodeId: string
+      choiceCount: number
+      conditional: boolean
+      unresolved: boolean
+      sourceEdgeIds: string[]
+    }>()
 
-  const onConnect = useCallback<OnConnect>((connection) => {
-    const targetNodeId = connection.target
-    const choiceId = connection.sourceHandle
-    if (!targetNodeId || !choiceId) return
-    props.onRetargetChoice(choiceId, targetNodeId)
-  }, [props])
+    visibleEdges.forEach(edge => {
+      const pairKey = `${edge.fromNodeId}::${edge.toNodeId}`
+      const existing = pairMap.get(pairKey)
+      if (existing) {
+        existing.choiceCount += 1
+        existing.conditional = existing.conditional || edge.conditional
+        existing.unresolved = existing.unresolved || edge.unresolved
+        existing.sourceEdgeIds.push(edge.id)
+      } else {
+        pairMap.set(pairKey, {
+          fromNodeId: edge.fromNodeId,
+          toNodeId: edge.toNodeId,
+          choiceCount: 1,
+          conditional: edge.conditional,
+          unresolved: edge.unresolved,
+          sourceEdgeIds: [edge.id]
+        })
+      }
+    })
+
+    return Array.from(pairMap.values()).map(pair => {
+      const isHighlighted = pair.sourceEdgeIds.some(id => highlightedEdgeIds.has(id))
+      return {
+        id: `pair:${pair.fromNodeId}::${pair.toNodeId}`,
+        type: 'smoothstep',
+        source: pair.fromNodeId,
+        target: pair.toNodeId,
+        label: pair.choiceCount > 1 ? String(pair.choiceCount) : undefined,
+        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+        className: [
+          'author-graph-edge',
+          pair.conditional ? 'is-conditional' : '',
+          pair.unresolved ? 'is-unresolved' : '',
+          isHighlighted ? 'is-highlighted' : ''
+        ].join(' ').trim()
+      }
+    })
+  }, [visibleEdges, highlightedEdgeIds])
 
   const onNodeClick = useCallback((_event: unknown, node: Node) => {
     if (node.type === 'groupNode') return
@@ -675,13 +687,11 @@ export function GraphWorkspacePane(props: GraphWorkspacePaneProps): JSX.Element 
               viewport,
               zoom: viewport.zoom
             })}
-            onConnect={onConnect}
             onNodeClick={onNodeClick}
             onNodeDoubleClick={onNodeDoubleClick}
             onNodeDragStop={onNodeDragStop}
             nodesDraggable
             elementsSelectable
-            connectionLineType={ConnectionLineType.SmoothStep}
             proOptions={{ hideAttribution: true }}
           >
             <Background variant={BackgroundVariant.Dots} gap={20} size={2} color="var(--border)" />
