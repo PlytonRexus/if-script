@@ -1,4 +1,6 @@
-# IF-Script IDE vNext
+# IF-Script IDE
+
+[![Deploy to GitHub Pages](https://github.com/PlytonRexus/if-script/actions/workflows/deploy.yml/badge.svg)](https://github.com/PlytonRexus/if-script/actions/workflows/deploy.yml)
 
 Fresh rewrite of the IF-Script IDE built as a modern web-first PWA.
 
